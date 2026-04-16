@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int        @id @default(autoincrement())
+  telegramId String     @unique
+  firstName  String
+  lastName   String?
+  username   String?
+  photoUrl   String?
+  createdAt  DateTime   @default(now())
+  orders     Order[]
+  addresses  Address[]
+  favorites  Favorite[]
+}
+
+model Address {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id])
+  label     String
+  street    String
+  city      String
+  zip       String
+  isDefault Boolean @default(false)
+  orders    Order[]
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  slug     String    @unique
+  name     String
+  order    Int
+  products Product[]
+}
+
+model Product {
+  id          Int         @id @default(autoincrement())
+  categoryId  Int
+  category    Category    @relation(fields: [categoryId], references: [id])
+  name        String
+  description String
+  price       Float
+  stock       Int         @default(0)
+  imageUrl    String
+  images      String      @default("[]")
+  isActive    Boolean     @default(true)
+  orderItems  OrderItem[]
+  favorites   Favorite[]
+}
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  userId       Int
+  user         User        @relation(fields: [userId], references: [id])
+  addressId    Int?
+  address      Address?    @relation(fields: [addressId], references: [id])
+  status       String      @default("PENDING")
+  note         String?
+  subtotal     Float
+  deliveryFee  Float
+  total        Float
+  deliverySlot String
+  createdAt    DateTime    @default(now())
+  items        OrderItem[]
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Float
+  options   String  @default("{}")
+}
+
+model Favorite {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id])
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+}
+
+model Setting {
+  key   String @id
+  value String
+}

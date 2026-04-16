@@ -1,0 +1,24 @@
+import express from 'express'
+import cors from 'cors'
+import authRouter from './routes/auth'
+import productsRouter from './routes/products'
+import categoriesRouter from './routes/categories'
+import ordersRouter from './routes/orders'
+import profileRouter from './routes/profile'
+import adminRouter from './routes/admin/index'
+import webhookRouter from './routes/webhook'
+
+export const app = express()
+
+app.use(cors())
+app.use(express.json())
+
+app.use('/api/auth', authRouter)
+app.use('/api/products', productsRouter)
+app.use('/api/categories', categoriesRouter)
+app.use('/api/orders', ordersRouter)
+app.use('/api/profile', profileRouter)
+app.use('/api/admin', adminRouter)
+app.use('/webhook', webhookRouter)
+
+app.get('/health', (_req, res) => res.json({ ok: true }))

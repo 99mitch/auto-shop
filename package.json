@@ -1,0 +1,13 @@
+{
+  "name": "floramini",
+  "private": true,
+  "workspaces": ["packages/*", "frontend", "backend", "bot"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w frontend\" \"npm run dev -w backend\"",
+    "seed": "npm run seed -w backend",
+    "test": "npm run test -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
