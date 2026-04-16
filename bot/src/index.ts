@@ -1,4 +1,3 @@
-import 'dotenv/config'
 import { Bot, InlineKeyboard } from 'grammy'
 
 const BOT_TOKEN = process.env.BOT_TOKEN

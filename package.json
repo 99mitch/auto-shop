@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": ["packages/*", "frontend", "backend", "bot"],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w frontend\" \"npm run dev -w backend\"",
+    "dev": "concurrently -n frontend,backend,bot \"npm run dev -w frontend\" \"npm run dev -w backend\" \"npm run polling -w bot\"",
     "seed": "npm run seed -w backend",
     "test": "npm run test -w backend"
   },
