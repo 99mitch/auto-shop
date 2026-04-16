@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npm run start:prod -w backend",
+    "startCommand": "npx prisma migrate deploy && node dist/prisma/seed.js && node dist/src/index.js",
     "restartPolicyType": "ON_FAILURE"
   }
 }
