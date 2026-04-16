@@ -91,7 +91,7 @@ export default function Catalogue() {
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <span className="text-5xl mb-3">🌿</span>
           <p className="text-sm" style={{ color: 'var(--tg-theme-hint-color, #6b7280)' }}>
-            Aucun produit trouvé
+            Aucun produit trouvéy
           </p>
         </div>
       ) : (
