@@ -56,7 +56,7 @@ export default function OrderDetail() {
           Articles
         </h3>
         <div className="space-y-2">
-          {order.items?.map((item) => (
+          {order.items?.map((item: any) => (
             <div key={item.id} className="flex justify-between text-sm">
               <span style={{ color: 'var(--tg-theme-hint-color, #6b7280)' }}>
                 {item.product?.name ?? `Produit #${item.productId}`} ×{item.quantity}
