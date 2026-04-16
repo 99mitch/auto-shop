@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.db
+*.db-journal
+.env
+frontend/node_modules/
+backend/node_modules/
+bot/node_modules/
+packages/*/node_modules/
