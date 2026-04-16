@@ -1,4 +1,4 @@
-import { bot } from '../../../bot/src/index'
+import { bot } from '../bot'
 
 const STATUS_MESSAGES: Record<string, (orderId: number, total?: number) => string> = {
   CONFIRMED: (id, total) => `✅ Commande #${id} confirmée ! Total: €${total?.toFixed(2) ?? '?'}`,

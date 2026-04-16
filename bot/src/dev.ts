@@ -1,4 +1,4 @@
-import { bot } from './index'
+import { bot } from '../../backend/src/bot'
 
 console.log('🤖 Starting bot in polling mode...')
 

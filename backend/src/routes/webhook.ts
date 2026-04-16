@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { bot } from '../../../bot/src/index'
+import { bot } from '../bot'
 
 const router = Router()
 
