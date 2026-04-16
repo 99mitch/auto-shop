@@ -8,4 +8,5 @@ backend/node_modules/
 bot/node_modules/
 packages/*/node_modules/
 backend/dist/
+packages/types/dist/
 .vercel/

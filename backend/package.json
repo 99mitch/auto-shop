@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start:prod": "prisma migrate deploy && node dist/index.js",
-    "build": "prisma generate && tsc",
+    "build": "npm run build -w floramini-types && prisma generate && tsc",
     "start": "node dist/index.js",
     "test": "jest --runInBand",
     "seed": "tsx prisma/seed.ts",
