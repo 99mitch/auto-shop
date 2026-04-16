@@ -14,6 +14,19 @@ router.post('/init', async (req: Request, res: Response) => {
     return
   }
 
+  // Dev mode: bypass Telegram validation when DEV_MODE=true
+  if (process.env.DEV_MODE === 'true' && initData === 'dev-mode') {
+    const user = await prisma.user.upsert({
+      where: { telegramId: '0' },
+      update: { firstName: 'Dev User' },
+      create: { telegramId: '0', firstName: 'Dev User', username: 'devuser' },
+    })
+    const token = signJwt({ userId: user.id, telegramId: user.telegramId })
+    const isAdmin = getAdminIds().includes(user.telegramId)
+    res.json({ token, user, isAdmin })
+    return
+  }
+
   try {
     const tgUser = validateInitData(initData, process.env.BOT_TOKEN!)
 
