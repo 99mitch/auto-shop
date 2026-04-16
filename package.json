@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "concurrently -n frontend,backend,bot \"npm run dev -w frontend\" \"npm run dev -w backend\" \"npm run polling -w bot\"",
     "seed": "npm run seed -w backend",
-    "test": "npm run test -w backend",
-    "tunnel": "~/.local/bin/cloudflared tunnel --url http://localhost:5173"
+    "test": "npm run test -w backend"
   },
   "devDependencies": {
     "concurrently": "^8.2.0"
