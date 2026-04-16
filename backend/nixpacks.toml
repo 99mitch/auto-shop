@@ -1,2 +1,2 @@
 [start]
-cmd = "npx prisma migrate deploy && node dist/prisma/seed.js && node dist/src/index.js"
+cmd = "npx prisma migrate deploy --schema=backend/prisma/schema.prisma && node backend/dist/prisma/seed.js && node backend/dist/src/index.js"

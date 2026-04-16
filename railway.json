@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cd backend && npx prisma migrate deploy && node dist/prisma/seed.js && node dist/src/index.js",
+    "startCommand": "npx prisma migrate deploy --schema=backend/prisma/schema.prisma && node backend/dist/prisma/seed.js && node backend/dist/src/index.js",
     "restartPolicyType": "ON_FAILURE"
   }
 }
