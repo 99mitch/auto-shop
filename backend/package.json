@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "start:prod": "prisma migrate deploy && node dist/index.js",
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",
     "test": "jest --runInBand",
