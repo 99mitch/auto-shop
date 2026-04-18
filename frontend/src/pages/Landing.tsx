@@ -41,7 +41,7 @@ export default function Landing() {
   const goToCatalogue = () => navigate('/catalogue')
 
   return (
-    <div style={{ background: '#0f0f0f', minHeight: '100vh' }}>
+    <div style={{ background: '#0f0f0f' }}>
 
       {/* Cart icon overlay */}
       <div className="absolute top-4 right-4 z-50">
@@ -95,7 +95,7 @@ export default function Landing() {
           </p>
           <div
             className="flex overflow-x-auto scrollbar-hide"
-            style={{ padding: '0 20px 4px', gap: 20 }}
+            style={{ padding: '12px 20px 16px', gap: 20 }}
           >
             {categories.map((cat, i) => {
               const [from, to] = CATEGORY_GRADIENTS[i % CATEGORY_GRADIENTS.length]

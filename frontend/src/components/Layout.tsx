@@ -6,12 +6,13 @@ export default function Layout() {
   useTheme()
   const { pathname } = useLocation()
   const isCatalogue = pathname === '/catalogue'
+  const isLanding = pathname === '/'
 
   return (
     <div
       className="min-h-screen"
       style={{
-        backgroundColor: 'var(--tg-theme-bg-color, #ffffff)',
+        backgroundColor: isLanding ? '#0f0f0f' : 'var(--tg-theme-bg-color, #ffffff)',
         color: 'var(--tg-theme-text-color, #000000)',
       }}
     >
