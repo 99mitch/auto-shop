@@ -10,3 +10,5 @@ packages/*/node_modules/
 backend/dist/
 packages/types/dist/
 .vercel/
+.worktrees/
+.superpowers/
