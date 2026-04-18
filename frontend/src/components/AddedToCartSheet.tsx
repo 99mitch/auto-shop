@@ -75,7 +75,7 @@ export default function AddedToCartSheet({ productId, productName, productPrice,
         </div>
 
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => { onClose(); navigate('/') }}>
+          <Button variant="outline" className="flex-1" onClick={() => { onClose(); navigate('/catalogue') }}>
             <ArrowLeft size={14} />
             Continuer
           </Button>

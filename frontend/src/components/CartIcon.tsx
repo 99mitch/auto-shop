@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { ShoppingBag } from 'lucide-react'
 import { useCartStore } from '../stores/cart'
 
-export default function CartIcon() {
+export default function CartIcon({ dark = false }: { dark?: boolean }) {
   const navigate = useNavigate()
   const location = useLocation()
   const totalItems = useCartStore((s) => s.totalItems())
@@ -14,8 +14,8 @@ export default function CartIcon() {
       onClick={() => navigate('/cart')}
       className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors active:scale-95"
       style={{
-        backgroundColor: 'var(--tg-theme-secondary-bg-color, #f1f5f9)',
-        color: 'var(--tg-theme-text-color, #0f172a)',
+        backgroundColor: dark ? 'rgba(255,255,255,0.1)' : 'var(--tg-theme-secondary-bg-color, #f1f5f9)',
+        color: dark ? '#fff' : 'var(--tg-theme-text-color, #0f172a)',
       }}
       aria-label="Panier"
     >

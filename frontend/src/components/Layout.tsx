@@ -5,7 +5,7 @@ import CartIcon from './CartIcon'
 export default function Layout() {
   useTheme()
   const { pathname } = useLocation()
-  const isCatalogue = pathname === '/'
+  const isCatalogue = pathname === '/catalogue'
 
   return (
     <div

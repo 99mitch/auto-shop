@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Search, X } from 'lucide-react'
 import WebApp from '@twa-dev/sdk'
@@ -14,8 +14,9 @@ const ALL_SLUG = 'all'
 
 export default function Catalogue() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const addItem = useCartStore((s) => s.addItem)
-  const [activeCategory, setActiveCategory] = useState(ALL_SLUG)
+  const [activeCategory, setActiveCategory] = useState(searchParams.get('category') ?? ALL_SLUG)
   const [search, setSearch] = useState('')
   const [addedProduct, setAddedProduct] = useState<Product | null>(null)
 

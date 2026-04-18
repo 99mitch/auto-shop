@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import WebApp from '@twa-dev/sdk'
 import { useAuthStore } from './stores/auth'
 import Layout from './components/Layout'
+import Landing from './pages/Landing'
 import Catalogue from './pages/Catalogue'
 import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
@@ -22,7 +23,8 @@ const router = createBrowserRouter([
     path: '/',
     element: <Layout />,
     children: [
-      { index: true, element: <Catalogue /> },
+      { index: true, element: <Landing /> },
+      { path: 'catalogue', element: <Catalogue /> },
       { path: 'product/:id', element: <ProductDetail /> },
       { path: 'cart', element: <Cart /> },
       { path: 'checkout', element: <Checkout /> },

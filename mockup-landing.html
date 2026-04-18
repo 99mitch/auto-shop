@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Landing Mockups</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px;
+    min-height: 100vh;
+  }
+
+  .label {
+    text-align: center;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+  }
+  .sublabel {
+    text-align: center;
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  /* Phone shell */
+  .phone {
+    width: 390px;
+    height: 780px;
+    border-radius: 44px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .phone-inner {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .phone-inner::-webkit-scrollbar { display: none; }
+
+  /* ========================
+     OPTION A
+  ======================== */
+  .a-bg {
+    background: #fafaf8;
+    min-height: 780px;
+  }
+
+  /* Hero */
+  .a-hero {
+    background: linear-gradient(160deg, #1a1a1a 0%, #2d2d2d 100%);
+    padding: 48px 24px 36px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .a-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+  }
+  .a-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -20px; left: -20px;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.03);
+  }
+  .a-logo {
+    font-size: 36px;
+    margin-bottom: 8px;
+    display: block;
+    animation: floatLogo 3s ease-in-out infinite;
+  }
+  @keyframes floatLogo {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .a-brand {
+    font-size: 26px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+  .a-tagline {
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
+    font-weight: 400;
+  }
+
+  /* Category section */
+  .a-section {
+    padding: 24px 16px 0;
+  }
+  .a-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #9ca3af;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    padding: 0 4px;
+  }
+  .a-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .a-card {
+    border-radius: 20px;
+    padding: 20px 16px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1 / 0.9;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    animation: cardIn 0.5s ease both;
+  }
+  .a-card:nth-child(1) { animation-delay: 0.05s; }
+  .a-card:nth-child(2) { animation-delay: 0.12s; }
+  .a-card:nth-child(3) { animation-delay: 0.19s; }
+  .a-card:nth-child(4) { animation-delay: 0.26s; }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .a-card-emoji {
+    font-size: 44px;
+    position: absolute;
+    top: 16px; right: 16px;
+    animation: emojiFloat 4s ease-in-out infinite;
+  }
+  .a-card:nth-child(2) .a-card-emoji { animation-delay: 0.8s; }
+  .a-card:nth-child(3) .a-card-emoji { animation-delay: 1.4s; }
+  .a-card:nth-child(4) .a-card-emoji { animation-delay: 0.4s; }
+  @keyframes emojiFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-5px) rotate(4deg); }
+  }
+  .a-card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 3px;
+    position: relative;
+  }
+  .a-card-count {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    position: relative;
+  }
+  .a-card-shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+    border-radius: 20px;
+  }
+
+  .a-card.roses     { background: linear-gradient(135deg, #e11d48, #9f1239); }
+  .a-card.tulipes   { background: linear-gradient(135deg, #f97316, #c2410c); }
+  .a-card.orchidees { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+  .a-card.bouquets  { background: linear-gradient(135deg, #10b981, #065f46); }
+
+  /* Promo banner */
+  .a-promo {
+    margin: 0 16px 20px;
+    border-radius: 16px;
+    padding: 14px 16px;
+    background: linear-gradient(100deg, #fef3c7, #fde68a);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .a-promo-icon { font-size: 22px; }
+  .a-promo-text { font-size: 12px; color: #78350f; line-height: 1.4; }
+  .a-promo-text strong { display: block; font-size: 13px; }
+
+  /* All products CTA */
+  .a-cta {
+    margin: 0 16px 28px;
+    background: #1a1a1a;
+    color: #fff;
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+
+  /* ========================
+     OPTION B
+  ======================== */
+  .b-bg {
+    background: #0f0f0f;
+    min-height: 780px;
+  }
+
+  /* Full hero */
+  .b-hero {
+    height: 340px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #1a0a2e 0%, #0f0f0f 100%);
+  }
+  .b-hero-glow {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -60%);
+    width: 280px; height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(139,92,246,0.35) 0%, transparent 70%);
+    animation: glowPulse 3s ease-in-out infinite;
+  }
+  .b-hero-glow2 {
+    position: absolute;
+    top: 30%; left: 30%;
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(236,72,153,0.2) 0%, transparent 70%);
+    animation: glowPulse 4s ease-in-out infinite reverse;
+  }
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.7; transform: translate(-50%, -60%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%, -60%) scale(1.1); }
+  }
+  .b-hero-content {
+    position: absolute;
+    bottom: 36px; left: 0; right: 0;
+    text-align: center;
+  }
+  .b-hero-emoji {
+    font-size: 52px;
+    display: block;
+    margin-bottom: 10px;
+    animation: floatLogo 3s ease-in-out infinite;
+  }
+  .b-brand {
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -1px;
+    margin-bottom: 6px;
+  }
+  .b-tagline {
+    font-size: 13px;
+    color: rgba(255,255,255,0.45);
+  }
+
+  /* Bubbles section */
+  .b-bubbles-label {
+    padding: 24px 24px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+  .b-bubbles-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding: 0 16px 8px;
+  }
+  .b-bubble {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .b-bubble-circle {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    position: relative;
+    animation: bubbleFloat 3s ease-in-out infinite;
+  }
+  .b-bubble:nth-child(2) .b-bubble-circle { animation-delay: 0.5s; }
+  .b-bubble:nth-child(3) .b-bubble-circle { animation-delay: 1s; }
+  .b-bubble:nth-child(4) .b-bubble-circle { animation-delay: 1.5s; }
+  @keyframes bubbleFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .b-bubble-circle::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    animation: ringPulse 3s ease-in-out infinite;
+  }
+  .b-bubble:nth-child(2) .b-bubble-circle::after { animation-delay: 0.5s; }
+  .b-bubble:nth-child(3) .b-bubble-circle::after { animation-delay: 1s; }
+  .b-bubble:nth-child(4) .b-bubble-circle::after { animation-delay: 1.5s; }
+  @keyframes ringPulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.08); }
+  }
+  .b-bubble-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+  }
+
+  .b-bc1 { background: linear-gradient(135deg, #be185d, #9d174d); }
+  .b-bc2 { background: linear-gradient(135deg, #d97706, #b45309); }
+  .b-bc3 { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+  .b-bc4 { background: linear-gradient(135deg, #059669, #047857); }
+
+  .b-bubbles-row2 {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding: 8px 16px 0;
+  }
+
+  /* Featured products */
+  .b-featured-label {
+    padding: 28px 24px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+  .b-featured-scroll {
+    display: flex;
+    gap: 12px;
+    padding: 0 16px 24px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .b-product-card {
+    flex-shrink: 0;
+    width: 130px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #1a1a1a;
+  }
+  .b-product-img {
+    width: 130px; height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+  }
+  .b-product-info {
+    padding: 10px 10px 12px;
+  }
+  .b-product-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .b-product-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: #a78bfa;
+  }
+
+  .b-all-btn {
+    margin: 0 16px 28px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+</style>
+</head>
+<body>
+
+<!-- OPTION A -->
+<div>
+  <p class="label">Option A — Category Grid</p>
+  <p class="sublabel">Épuré, cartes colorées<br>animation d'entrée staggerée</p>
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="a-bg">
+
+        <!-- Hero -->
+        <div class="a-hero">
+          <span class="a-logo">🌸</span>
+          <div class="a-brand">FloraMini</div>
+          <div class="a-tagline">Fleurs fraîches, livrées chez vous</div>
+        </div>
+
+        <!-- Categories -->
+        <div class="a-section">
+          <div class="a-section-title">Nos catégories</div>
+          <div class="a-grid">
+            <div class="a-card roses">
+              <div class="a-card-shimmer"></div>
+              <span class="a-card-emoji">🌹</span>
+              <div class="a-card-name">Roses</div>
+              <div class="a-card-count">12 produits</div>
+            </div>
+            <div class="a-card tulipes">
+              <div class="a-card-shimmer"></div>
+              <span class="a-card-emoji">🌷</span>
+              <div class="a-card-name">Tulipes</div>
+              <div class="a-card-count">8 produits</div>
+            </div>
+            <div class="a-card orchidees">
+              <div class="a-card-shimmer"></div>
+              <span class="a-card-emoji">🌺</span>
+              <div class="a-card-name">Orchidées</div>
+              <div class="a-card-count">6 produits</div>
+            </div>
+            <div class="a-card bouquets">
+              <div class="a-card-shimmer"></div>
+              <span class="a-card-emoji">💐</span>
+              <div class="a-card-name">Bouquets</div>
+              <div class="a-card-count">15 produits</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Promo -->
+        <div class="a-promo">
+          <span class="a-promo-icon">✨</span>
+          <div class="a-promo-text">
+            <strong>Livraison offerte dès 40€</strong>
+            Commandez avant 14h, livré aujourd'hui
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="a-cta">
+          🛍️ &nbsp;Voir tous les produits
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OPTION B -->
+<div>
+  <p class="label">Option B — Hero + Bulles flottantes</p>
+  <p class="sublabel">Sombre, premium, animations<br>ambiance plus immersive</p>
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="b-bg">
+
+        <!-- Hero -->
+        <div class="b-hero">
+          <div class="b-hero-glow"></div>
+          <div class="b-hero-glow2"></div>
+          <div class="b-hero-content">
+            <span class="b-hero-emoji">🌸</span>
+            <div class="b-brand">FloraMini</div>
+            <div class="b-tagline">Fleurs fraîches, livrées chez vous</div>
+          </div>
+        </div>
+
+        <!-- Bubbles -->
+        <div class="b-bubbles-label">Explorer par catégorie</div>
+        <div class="b-bubbles-row">
+          <div class="b-bubble">
+            <div class="b-bubble-circle b-bc1">🌹</div>
+            <span class="b-bubble-label">Roses</span>
+          </div>
+          <div class="b-bubble">
+            <div class="b-bubble-circle b-bc2">🌷</div>
+            <span class="b-bubble-label">Tulipes</span>
+          </div>
+          <div class="b-bubble">
+            <div class="b-bubble-circle b-bc3">🌺</div>
+            <span class="b-bubble-label">Orchidées</span>
+          </div>
+          <div class="b-bubble">
+            <div class="b-bubble-circle b-bc4">💐</div>
+            <span class="b-bubble-label">Bouquets</span>
+          </div>
+        </div>
+
+        <!-- Featured -->
+        <div class="b-featured-label">Nouveautés</div>
+        <div class="b-featured-scroll">
+          <div class="b-product-card">
+            <div class="b-product-img" style="background:#1e0a0f;">🌹</div>
+            <div class="b-product-info">
+              <div class="b-product-name">Rose Rouge Éternel</div>
+              <div class="b-product-price">€18.90</div>
+            </div>
+          </div>
+          <div class="b-product-card">
+            <div class="b-product-img" style="background:#0a0e1e;">💜</div>
+            <div class="b-product-info">
+              <div class="b-product-name">Orchidée Violette</div>
+              <div class="b-product-price">€24.50</div>
+            </div>
+          </div>
+          <div class="b-product-card">
+            <div class="b-product-img" style="background:#0a1a0e;">💐</div>
+            <div class="b-product-info">
+              <div class="b-product-name">Bouquet Printemps</div>
+              <div class="b-product-price">€32.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="b-all-btn">
+          Voir tous les produits →
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
