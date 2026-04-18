@@ -1,15 +1,13 @@
-import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import type { Order } from 'floramini-types'
-import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 import StatusBadge from '../components/StatusBadge'
 import LoadingSkeleton from '../components/LoadingSkeleton'
+import PageHeader from '../components/PageHeader'
 
 export default function Orders() {
   const navigate = useNavigate()
-  useTelegramBackButton(useCallback(() => navigate('/'), [navigate]))
 
   const { data: orders = [], isLoading } = useQuery<Order[]>({
     queryKey: ['orders'],
@@ -19,43 +17,48 @@ export default function Orders() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <LoadingSkeleton key={i} className="h-20 rounded-2xl" />
-        ))}
-      </div>
+      <>
+        <PageHeader title="Mes commandes" onBack={() => navigate('/')} />
+        <div className="p-4 space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <LoadingSkeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+      </>
     )
   }
 
   if (orders.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <span className="text-6xl mb-4">📦</span>
-        <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--tg-theme-text-color)' }}>
-          Aucune commande
-        </h2>
-        <p className="text-sm mb-6" style={{ color: 'var(--tg-theme-hint-color, #6b7280)' }}>
-          Vos commandes apparaîtront ici
-        </p>
-        <button
-          onClick={() => navigate('/')}
-          className="rounded-full px-6 py-2.5 text-sm font-semibold"
-          style={{
-            backgroundColor: 'var(--tg-theme-button-color, #3b82f6)',
-            color: 'var(--tg-theme-button-text-color, #fff)',
-          }}
-        >
-          Commencer mes achats
-        </button>
-      </div>
+      <>
+        <PageHeader title="Mes commandes" onBack={() => navigate('/')} />
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <span className="text-6xl mb-4">📦</span>
+          <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--tg-theme-text-color)' }}>
+            Aucune commande
+          </h2>
+          <p className="text-sm mb-6" style={{ color: 'var(--tg-theme-hint-color, #6b7280)' }}>
+            Vos commandes apparaîtront ici
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            className="rounded-xl px-6 py-2.5 text-sm font-semibold"
+            style={{
+              backgroundColor: 'var(--tg-theme-button-color, #0f172a)',
+              color: 'var(--tg-theme-button-text-color, #fff)',
+            }}
+          >
+            Commencer mes achats
+          </button>
+        </div>
+      </>
     )
   }
 
   return (
-    <div className="p-4">
-      <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--tg-theme-text-color)' }}>
-        Mes commandes
-      </h2>
+    <>
+      <PageHeader title="Mes commandes" onBack={() => navigate('/')} />
+      <div className="p-4">
       <div className="space-y-3">
         {orders.map((order) => (
           <button
@@ -89,5 +92,6 @@ export default function Orders() {
         ))}
       </div>
     </div>
+    </>
   )
 }

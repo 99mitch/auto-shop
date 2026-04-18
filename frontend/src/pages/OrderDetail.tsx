@@ -1,17 +1,15 @@
-import { useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import type { Order } from 'floramini-types'
-import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 import OrderProgressBar from '../components/OrderProgressBar'
 import StatusBadge from '../components/StatusBadge'
 import LoadingSkeleton from '../components/LoadingSkeleton'
+import PageHeader from '../components/PageHeader'
 
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  useTelegramBackButton(useCallback(() => navigate('/orders'), [navigate]))
 
   const { data: order, isLoading } = useQuery<Order>({
     queryKey: ['order', id],
@@ -21,23 +19,26 @@ export default function OrderDetail() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-3">
-        <LoadingSkeleton className="h-20 rounded-2xl" />
-        <LoadingSkeleton className="h-32 rounded-2xl" />
-      </div>
+      <>
+        <PageHeader title="Commande" onBack={() => navigate('/orders')} />
+        <div className="p-4 space-y-3">
+          <LoadingSkeleton className="h-20 rounded-xl" />
+          <LoadingSkeleton className="h-32 rounded-xl" />
+        </div>
+      </>
     )
   }
 
   if (!order) return null
 
   return (
+    <>
+    <PageHeader
+      title={`Commande #${order.id}`}
+      onBack={() => navigate('/orders')}
+      right={<StatusBadge status={order.status} />}
+    />
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold" style={{ color: 'var(--tg-theme-text-color)' }}>
-          Commande #{order.id}
-        </h2>
-        <StatusBadge status={order.status} />
-      </div>
 
       {/* Progress bar */}
       <div
@@ -114,5 +115,6 @@ export default function OrderDetail() {
         )}
       </div>
     </div>
+    </>
   )
 }

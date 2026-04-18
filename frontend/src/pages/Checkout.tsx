@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useCartStore } from '../stores/cart'
-import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 import { useTelegramMainButton } from '../hooks/useTelegramMainButton'
 import type { Address, Order } from 'floramini-types'
 import LoadingSkeleton from '../components/LoadingSkeleton'
+import PageHeader from '../components/PageHeader'
 
 const DEFAULT_SLOTS = ['09:00-11:00', '11:00-13:00', '13:00-15:00', '15:00-17:00', '17:00-19:00']
 
@@ -29,8 +29,6 @@ export default function Checkout() {
   const [selectedSlot, setSelectedSlot] = useState(DEFAULT_SLOTS[0])
   const [deliveryFee, setDeliveryFee] = useState(5)
   const [slots, setSlots] = useState(DEFAULT_SLOTS)
-
-  useTelegramBackButton(useCallback(() => navigate(-1), [navigate]))
 
   const { data: addresses = [], isLoading: addrLoading } = useQuery<Address[]>({
     queryKey: ['profile-addresses'],
@@ -105,11 +103,9 @@ export default function Checkout() {
   )
 
   return (
+    <>
+    <PageHeader title="Livraison" />
     <div className="p-4 space-y-4">
-      <h2 className="text-lg font-bold" style={{ color: 'var(--tg-theme-text-color)' }}>
-        Livraison
-      </h2>
-
       {/* Address */}
       {addrLoading ? (
         <LoadingSkeleton className="h-24 rounded-2xl" />
@@ -273,5 +269,6 @@ export default function Checkout() {
         )}
       </div>
     </div>
+    </>
   )
 }
