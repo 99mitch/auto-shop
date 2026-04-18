@@ -1,21 +1,28 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { ShoppingBag } from 'lucide-react'
 import { useCartStore } from '../stores/cart'
 
 export default function CartIcon() {
   const navigate = useNavigate()
+  const location = useLocation()
   const totalItems = useCartStore((s) => s.totalItems())
+
+  if (location.pathname === '/cart') return null
 
   return (
     <button
       onClick={() => navigate('/cart')}
-      className="relative p-2 rounded-full"
-      style={{ backgroundColor: 'var(--tg-theme-button-color, #3b82f6)' }}
+      className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors active:scale-95"
+      style={{
+        backgroundColor: 'var(--tg-theme-secondary-bg-color, #f1f5f9)',
+        color: 'var(--tg-theme-text-color, #0f172a)',
+      }}
       aria-label="Panier"
     >
-      <span className="text-xl leading-none">🛒</span>
+      <ShoppingBag size={20} />
       {totalItems > 0 && (
-        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white font-bold leading-none">
-          {totalItems > 99 ? '99+' : totalItems}
+        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#ef4444] text-[10px] font-bold text-white leading-none">
+          {totalItems > 9 ? '9+' : totalItems}
         </span>
       )}
     </button>

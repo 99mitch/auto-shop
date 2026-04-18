@@ -4,8 +4,8 @@ import CartIcon from './CartIcon'
 
 export default function Layout() {
   useTheme()
-  const location = useLocation()
-  const isAdmin = location.pathname.startsWith('/admin')
+  const { pathname } = useLocation()
+  const isCatalogue = pathname === '/'
 
   return (
     <div
@@ -15,20 +15,23 @@ export default function Layout() {
         color: 'var(--tg-theme-text-color, #000000)',
       }}
     >
-      {!isAdmin && (
+      {isCatalogue && (
         <header
           className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b"
           style={{
-            borderColor: 'var(--tg-theme-hint-color, #e5e7eb)',
-            backgroundColor: 'var(--tg-theme-secondary-bg-color, #f9fafb)',
+            borderColor: 'var(--tg-theme-hint-color, #e2e8f0)',
+            backgroundColor: 'var(--tg-theme-bg-color, #fff)',
           }}
         >
-          <h1
-            className="text-xl font-bold"
-            style={{ color: 'var(--tg-theme-text-color, #1f2937)' }}
-          >
-            🌸 FloraMini
-          </h1>
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-[#22c55e]" />
+            <h1
+              className="text-base font-bold tracking-tight"
+              style={{ color: 'var(--tg-theme-text-color, #0f172a)' }}
+            >
+              FloraMini
+            </h1>
+          </div>
           <CartIcon />
         </header>
       )}
