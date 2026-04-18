@@ -124,6 +124,7 @@ export default function Catalogue() {
 
       {addedProduct && (
         <AddedToCartSheet
+          productId={addedProduct.id}
           productName={addedProduct.name}
           productPrice={addedProduct.price}
           onClose={() => setAddedProduct(null)}

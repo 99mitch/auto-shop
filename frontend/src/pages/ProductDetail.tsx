@@ -126,23 +126,21 @@ export default function ProductDetail() {
           {product.description}
         </p>
 
-        {product.stock === 0 ? (
+        {product.stock === 0 && (
           <Badge variant="danger" className="w-full justify-center py-2 text-xs">
             Rupture de stock — non disponible actuellement
           </Badge>
-        ) : product.stock <= 5 ? (
+        )}
+        {product.stock > 0 && product.stock <= 5 && (
           <Badge variant="warning" className="w-full justify-center py-2 text-xs">
             ⚠️ Plus que {product.stock} en stock !
-          </Badge>
-        ) : (
-          <Badge variant="success" className="w-full justify-center py-2 text-xs">
-            ✓ En stock · {product.stock} disponibles
           </Badge>
         )}
       </div>
 
       {showSheet && (
         <AddedToCartSheet
+          productId={product.id}
           productName={product.name}
           productPrice={product.price}
           onClose={() => setShowSheet(false)}

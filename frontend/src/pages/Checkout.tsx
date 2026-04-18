@@ -8,14 +8,15 @@ import type { Address, Order } from 'floramini-types'
 import LoadingSkeleton from '../components/LoadingSkeleton'
 import PageHeader from '../components/PageHeader'
 
-const DEFAULT_SLOTS = ['09:00-11:00', '11:00-13:00', '13:00-15:00', '15:00-17:00', '17:00-19:00']
-
-function getNextDays(n: number): Date[] {
-  return Array.from({ length: n }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() + i + 1)
-    return d
-  })
+function getDeliveryDate(): Date {
+  const d = new Date()
+  let added = 0
+  while (added < 3) {
+    d.setDate(d.getDate() + 1)
+    const day = d.getDay()
+    if (day !== 0 && day !== 6) added++
+  }
+  return d
 }
 
 export default function Checkout() {
@@ -25,10 +26,7 @@ export default function Checkout() {
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const [newAddress, setNewAddress] = useState({ label: 'Domicile', street: '', city: '', zip: '' })
   const [useNewAddress, setUseNewAddress] = useState(false)
-  const [selectedDate, setSelectedDate] = useState<Date>(getNextDays(7)[0])
-  const [selectedSlot, setSelectedSlot] = useState(DEFAULT_SLOTS[0])
   const [deliveryFee, setDeliveryFee] = useState(5)
-  const [slots, setSlots] = useState(DEFAULT_SLOTS)
 
   const { data: addresses = [], isLoading: addrLoading } = useQuery<Address[]>({
     queryKey: ['profile-addresses'],
@@ -40,7 +38,6 @@ export default function Checkout() {
       .get('/api/admin/settings')
       .then((r) => {
         if (r.data.deliveryFee) setDeliveryFee(r.data.deliveryFee)
-        if (r.data.timeSlots?.length) setSlots(r.data.timeSlots)
       })
       .catch(() => {})
   }, [])
@@ -55,16 +52,11 @@ export default function Checkout() {
   }, [addresses])
 
   const total = subtotal() + deliveryFee
-  const days = getNextDays(7)
 
   const createOrderMutation = useMutation({
     mutationFn: async () => {
-      const [hours] = selectedSlot.split(':')
-      const slot = new Date(selectedDate)
-      slot.setHours(parseInt(hours), 0, 0, 0)
-
       const body: Record<string, unknown> = {
-        deliverySlot: slot.toISOString(),
+        deliverySlot: getDeliveryDate().toISOString(),
         note: note || undefined,
         items: items.map((i) => ({
           productId: i.productId,
@@ -171,60 +163,15 @@ export default function Checkout() {
         </div>
       )}
 
-      {/* Delivery slot */}
+      {/* Delivery info */}
       <div
-        className="rounded-2xl p-4"
+        className="rounded-2xl p-4 flex items-center gap-3"
         style={{ backgroundColor: 'var(--tg-theme-secondary-bg-color, #f9fafb)' }}
       >
-        <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--tg-theme-text-color)' }}>
-          Créneau de livraison
-        </h3>
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
-          {days.map((d, i) => (
-            <button
-              key={i}
-              onClick={() => setSelectedDate(d)}
-              className="shrink-0 rounded-xl px-3 py-2 text-xs font-medium"
-              style={
-                selectedDate.toDateString() === d.toDateString()
-                  ? {
-                      backgroundColor: 'var(--tg-theme-button-color, #3b82f6)',
-                      color: 'var(--tg-theme-button-text-color, #fff)',
-                    }
-                  : {
-                      backgroundColor: 'var(--tg-theme-bg-color, #fff)',
-                      color: 'var(--tg-theme-text-color)',
-                      border: '1px solid var(--tg-theme-hint-color, #e5e7eb)',
-                    }
-              }
-            >
-              {d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {slots.map((slot) => (
-            <button
-              key={slot}
-              onClick={() => setSelectedSlot(slot)}
-              className="rounded-xl py-2 text-xs font-medium"
-              style={
-                selectedSlot === slot
-                  ? {
-                      backgroundColor: 'var(--tg-theme-button-color, #3b82f6)',
-                      color: 'var(--tg-theme-button-text-color, #fff)',
-                    }
-                  : {
-                      backgroundColor: 'var(--tg-theme-bg-color, #fff)',
-                      color: 'var(--tg-theme-text-color)',
-                      border: '1px solid var(--tg-theme-hint-color, #e5e7eb)',
-                    }
-              }
-            >
-              {slot}
-            </button>
-          ))}
-        </div>
+        <span className="text-xl">🚚</span>
+        <p className="text-sm" style={{ color: 'var(--tg-theme-text-color)' }}>
+          Livraison sous <strong>3 jours ouvrés</strong>
+        </p>
       </div>
 
       {/* Order summary */}
