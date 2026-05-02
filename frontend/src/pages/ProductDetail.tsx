@@ -12,6 +12,25 @@ import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 
 import type { MockCard } from './Catalogue'
 
+const TAG_COLORS: Record<string, { bg: string; color: string }> = {
+  VISA:          { bg: 'rgba(99,102,241,0.18)',  color: '#818cf8' },
+  MASTERCARD:    { bg: 'rgba(249,115,22,0.18)',  color: '#fb923c' },
+  DEBIT:         { bg: 'rgba(234,179,8,0.18)',   color: '#facc15' },
+  CREDIT:        { bg: 'rgba(34,197,94,0.15)',   color: '#4ade80' },
+  AMELI:         { bg: 'rgba(236,72,153,0.15)',  color: '#f472b6' },
+  ANDROID:       { bg: 'rgba(34,211,238,0.15)',  color: '#22d3ee' },
+  IPHONE:        { bg: 'rgba(156,163,175,0.15)', color: '#9ca3af' },
+  "AUJOURD'HUI": { bg: 'rgba(251,191,36,0.15)',  color: '#fbbf24' },
+  'J-1':         { bg: 'rgba(251,191,36,0.08)',  color: 'rgba(251,191,36,0.55)' },
+  'J-2':         { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' },
+}
+
+const NIVEAU_ACCENT: Record<string, string> = {
+  GOLD:    '#fbbf24',
+  PREMIER: '#a78bfa',
+  CLASSIC: 'rgba(255,255,255,0.2)',
+}
+
 const MOCK_CARDS: MockCard[] = [
   { id: 1,  bin: '497203', name: 'Crédit Mutuel Visa Classic',    price: 18, stock: 8,  imageUrl: '', images: [], description: 'Crédit Mutuel — Visa Classic. Balance vérifiée, CVV inclus.',  categoryId: 1, isActive: true, niveau: 'CLASSIC', age: 34, cp: '75012', tags: ['VISA','DEBIT',"AUJOURD'HUI"],                  banque: 'CRÉDIT MUTUEL',    category: { id:1, name:'Visa',       slug:'visa', order:1 } },
   { id: 2,  bin: '497207', name: 'Crédit Mutuel Visa Gold',       price: 30, stock: 3,  imageUrl: '', images: [], description: 'Crédit Mutuel — Visa Gold. Plafond élevé. CVV + date inclus.', categoryId: 1, isActive: true, niveau: 'GOLD',    age: 48, cp: '69001', tags: ['VISA','CREDIT','AMELI','ANDROID','J-1'],        banque: 'CRÉDIT MUTUEL',    category: { id:1, name:'Visa',       slug:'visa', order:1 } },
@@ -66,7 +85,9 @@ export default function ProductDetail() {
   useTelegramMainButton(
     product ? `Ajouter au panier — €${product.price.toFixed(2)}` : 'Chargement...',
     handleAddToCart,
-    !!product && product.stock > 0 && !showSheet
+    !!product && product.stock > 0 && !showSheet,
+    '#b45309',
+    '#fef3c7',
   )
 
   if (isLoading) {
@@ -186,70 +207,75 @@ export default function ProductDetail() {
       </div>
 
       {/* Info section */}
-      <div style={{ padding: '20px 16px' }}>
+      <div style={{ padding: '16px 16px' }}>
 
-        {/* Status */}
-        {isOut && (
+        {/* BIN + tags */}
+        {mockCard && (
           <div style={{
-            marginBottom: 16, padding: '10px 14px', borderRadius: 10,
-            background: 'rgba(239,68,68,0.08)',
-            border: '1px solid rgba(239,68,68,0.25)',
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 11, color: '#ef4444', letterSpacing: '0.1em',
+            background: '#111',
+            border: `1px solid rgba(255,255,255,0.07)`,
+            borderLeft: `3px solid ${NIVEAU_ACCENT[mockCard.niveau] ?? 'rgba(255,255,255,0.2)'}`,
+            borderRadius: 14, marginBottom: 12, overflow: 'hidden',
           }}>
-            ✕ RUPTURE DE STOCK
-          </div>
-        )}
-        {isLow && (
-          <div style={{
-            marginBottom: 16, padding: '10px 14px', borderRadius: 10,
-            background: 'rgba(245,158,11,0.08)',
-            border: '1px solid rgba(245,158,11,0.25)',
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 11, color: '#f59e0b', letterSpacing: '0.1em',
-          }}>
-            ⚠ PLUS QUE {product.stock} EN STOCK
-          </div>
-        )}
-
-        {/* Description */}
-        {product.description && (
-          <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 12, padding: '14px 16px',
-          }}>
-            <div style={{
-              fontSize: 9, fontWeight: 700, letterSpacing: '0.2em',
-              color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono", monospace',
-              textTransform: 'uppercase', marginBottom: 8,
-            }}>
-              DESCRIPTION
+            {/* BIN row */}
+            <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 6 }}>BIN</div>
+              <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 26, fontWeight: 700, color: '#fff', letterSpacing: '0.08em', lineHeight: 1 }}>
+                {mockCard.bin}
+              </div>
             </div>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.6, margin: 0 }}>
-              {product.description}
-            </p>
+
+            {/* Tags */}
+            <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {mockCard.tags.map((t: string) => {
+                const c = TAG_COLORS[t] ?? { bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }
+                return (
+                  <span key={t} style={{
+                    background: c.bg, color: c.color,
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
+                    padding: '3px 8px', borderRadius: 5,
+                    fontFamily: '"JetBrains Mono", monospace',
+                  }}>{t}</span>
+                )
+              })}
+            </div>
+
+            {/* Data grid 2×2 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              {[
+                { label: 'AGE',         value: `${mockCard.age} ans` },
+                { label: 'BANQUE',      value: mockCard.banque },
+                { label: 'NIVEAU',      value: mockCard.niveau },
+                { label: 'CODE POSTAL', value: mockCard.cp },
+              ].map((f, i) => (
+                <div key={f.label} style={{
+                  padding: '12px 16px',
+                  borderRight:  i % 2 === 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  borderBottom: i < 2       ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                }}>
+                  <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 4 }}>{f.label}</div>
+                  <div style={{
+                    fontSize: 13, fontWeight: 700,
+                    color: f.label === 'NIVEAU' ? (NIVEAU_ACCENT[mockCard.niveau] ?? '#fff') : 'rgba(255,255,255,0.88)',
+                    fontFamily: '"JetBrains Mono", monospace',
+                  }}>{f.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Prix */}
+            <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 26, color: NIVEAU_ACCENT[mockCard.niveau] ?? '#fbbf24', letterSpacing: '0.04em' }}>
+                €{product.price.toFixed(2)}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {isLow && <span style={{ fontSize: 9, fontFamily: '"JetBrains Mono", monospace', color: '#f59e0b', letterSpacing: '0.1em' }}>⚠ {product.stock} restants</span>}
+                {isOut  && <span style={{ fontSize: 9, fontFamily: '"JetBrains Mono", monospace', color: '#ef4444', letterSpacing: '0.1em' }}>ÉPUISÉ</span>}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Add button (fallback if Telegram button not available) */}
-        {product.stock > 0 && (
-          <button
-            onClick={handleAddToCart}
-            style={{
-              width: '100%', marginTop: 16,
-              padding: '14px 0', borderRadius: 14,
-              background: 'rgba(251,191,36,0.12)',
-              border: '1px solid rgba(251,191,36,0.35)',
-              color: '#fbbf24', cursor: 'pointer',
-              fontFamily: '"Bebas Neue", "Impact", sans-serif',
-              fontSize: 18, letterSpacing: '0.1em',
-              transition: 'background 0.15s',
-            }}
-          >
-            AJOUTER AU PANIER — €{product.price.toFixed(2)}
-          </button>
-        )}
       </div>
 
       {showSheet && (
