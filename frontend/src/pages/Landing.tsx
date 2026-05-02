@@ -5,7 +5,7 @@ export default function Landing() {
   const navigate = useNavigate()
 
   return (
-    <div style={{ background: '#050505', minHeight: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ background: '#050505', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
 
       {/* Ambient background glows */}
       <div style={{
@@ -28,7 +28,7 @@ export default function Landing() {
       {/* Header */}
       <div style={{
         position: 'relative', zIndex: 10,
-        padding: '52px 0 32px',
+        padding: '36px 0 20px',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
       }}>
         <div style={{
@@ -56,8 +56,8 @@ export default function Landing() {
       {/* Two CTA panels */}
       <div style={{
         position: 'relative', zIndex: 10,
-        flex: 1, display: 'flex', flexDirection: 'column',
-        padding: '0 16px 40px', gap: 12,
+        flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+        padding: '0 16px 20px', gap: 10,
       }}>
 
         {/* Cards panel */}
@@ -65,7 +65,7 @@ export default function Landing() {
           onClick={() => navigate('/catalogue?type=cards')}
           className="panel-btn"
           style={{
-            flex: 1, minHeight: 180,
+            flex: 1, minHeight: 0,
             border: '1px solid rgba(251,191,36,0.18)',
             borderRadius: 20,
             background: 'linear-gradient(135deg, rgba(251,191,36,0.07) 0%, rgba(245,158,11,0.03) 100%)',
@@ -149,7 +149,7 @@ export default function Landing() {
           onClick={() => navigate('/catalogue?type=digital')}
           className="panel-btn"
           style={{
-            flex: 1, minHeight: 180,
+            flex: 1, minHeight: 0,
             border: '1px solid rgba(34,211,238,0.18)',
             borderRadius: 20,
             background: 'linear-gradient(135deg, rgba(34,211,238,0.07) 0%, rgba(6,182,212,0.03) 100%)',

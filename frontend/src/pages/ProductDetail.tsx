@@ -115,11 +115,11 @@ export default function ProductDetail() {
   const isLow = product.stock > 0 && product.stock <= 5
 
   return (
-    <div style={{ background: '#050505', minHeight: '100vh' }}>
+    <div style={{ background: '#050505', height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
       {/* Header */}
       <div style={{
-        position: 'sticky', top: 0, zIndex: 40,
+        flexShrink: 0,
         background: 'rgba(5,5,5,0.92)', backdropFilter: 'blur(12px)',
         borderBottom: '1px solid rgba(251,191,36,0.15)',
         padding: '12px 16px',
@@ -148,11 +148,15 @@ export default function ProductDetail() {
         <CartIcon dark />
       </div>
 
+      {/* Scrollless content area */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '12px 16px 16px', gap: 10, overflow: 'hidden' }}>
+
       {/* Card preview */}
-      <div style={{ padding: '20px 16px 0' }}>
+      <div style={{ flexShrink: 0 }}>
         <div style={{
-          width: '100%', aspectRatio: '1.586',
-          borderRadius: 18, overflow: 'hidden',
+          width: 'min(100%, calc(38vh * 1.586))',
+          aspectRatio: '1.586',
+          borderRadius: 16, overflow: 'hidden',
           border: '1px solid rgba(251,191,36,0.25)',
           position: 'relative', background: '#111',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
@@ -207,7 +211,7 @@ export default function ProductDetail() {
       </div>
 
       {/* Info section */}
-      <div style={{ padding: '16px 16px' }}>
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
         {/* BIN + tags */}
         {mockCard && (
@@ -218,7 +222,7 @@ export default function ProductDetail() {
             borderRadius: 14, marginBottom: 12, overflow: 'hidden',
           }}>
             {/* BIN row */}
-            <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 6 }}>BIN</div>
               <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 26, fontWeight: 700, color: '#fff', letterSpacing: '0.08em', lineHeight: 1 }}>
                 {mockCard.bin}
@@ -226,7 +230,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Tags */}
-            <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+            <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {mockCard.tags.map((t: string) => {
                 const c = TAG_COLORS[t] ?? { bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }
                 return (
@@ -249,7 +253,7 @@ export default function ProductDetail() {
                 { label: 'CODE POSTAL', value: mockCard.cp },
               ].map((f, i) => (
                 <div key={f.label} style={{
-                  padding: '12px 16px',
+                  padding: '8px 14px',
                   borderRight:  i % 2 === 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
                   borderBottom: i < 2       ? '1px solid rgba(255,255,255,0.06)' : 'none',
                 }}>
@@ -264,7 +268,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Prix */}
-            <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 26, color: NIVEAU_ACCENT[mockCard.niveau] ?? '#fbbf24', letterSpacing: '0.04em' }}>
                 €{product.price.toFixed(2)}
               </span>
@@ -277,6 +281,7 @@ export default function ProductDetail() {
         )}
 
       </div>
+      </div>{/* end scrollless content area */}
 
       {showSheet && (
         <AddedToCartSheet
