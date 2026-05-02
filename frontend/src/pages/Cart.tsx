@@ -1,153 +1,232 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCartStore } from '../stores/cart'
 import { useTelegramMainButton } from '../hooks/useTelegramMainButton'
-import PageHeader from '../components/PageHeader'
+import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 
 export default function Cart() {
   const navigate = useNavigate()
   const { items, note, updateQuantity, setNote, subtotal } = useCartStore()
 
-  useTelegramMainButton('Commander', () => navigate('/checkout'), items.length > 0)
+  useTelegramBackButton(() => navigate(-1))
+  useTelegramMainButton(
+    `Commander — €${subtotal().toFixed(2)}`,
+    () => navigate('/checkout'),
+    items.length > 0,
+    '#1a1500',
+    '#fbbf24',
+  )
 
   if (items.length === 0) {
     return (
-      <>
-        <PageHeader title="Mon panier" onBack={() => navigate('/')} />
-        <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-          <span className="text-6xl mb-4">🛒</span>
-          <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--tg-theme-text-color)' }}>
-            Votre panier est vide
-          </h2>
-          <p className="text-sm mb-6" style={{ color: 'var(--tg-theme-hint-color, #6b7280)' }}>
-            Ajoutez des fleurs pour commencer
-          </p>
+      <div style={{ background: '#050505', minHeight: '100vh' }}>
+        <Header onBack={() => navigate(-1)} count={0} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px', gap: 14 }}>
+          <div style={{ fontSize: 36, opacity: 0.2 }}>▣</div>
+          <p style={{ fontSize: 12, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.15em' }}>PANIER VIDE</p>
           <button
             onClick={() => navigate('/')}
-            className="rounded-xl px-6 py-2.5 text-sm font-semibold"
             style={{
-              backgroundColor: 'var(--tg-theme-button-color, #0f172a)',
-              color: 'var(--tg-theme-button-text-color, #fff)',
+              marginTop: 8, padding: '10px 24px', borderRadius: 10, cursor: 'pointer',
+              background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
+              color: '#fbbf24', fontSize: 11, fontWeight: 700,
+              fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.1em',
             }}
           >
-            Voir le catalogue
+            VOIR LE CATALOGUE
           </button>
         </div>
-      </>
+        <Fonts />
+      </div>
     )
   }
 
   return (
-    <>
-      <PageHeader title="Mon panier" onBack={() => navigate('/')} />
-      <div className="p-4">
-        <div className="space-y-3 mb-4">
-          {items.map((item) => (
-            <div
-              key={item.productId}
-              className="flex items-center gap-3 rounded-xl p-3 border"
-              style={{
-                borderColor: 'var(--tg-theme-hint-color, #e2e8f0)',
-                backgroundColor: 'var(--tg-theme-bg-color, #fff)',
-              }}
-            >
-              <img
-                src={item.productImageUrl}
-                alt={item.productName}
-                className="w-16 h-16 rounded-xl object-cover shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-sm font-semibold truncate"
-                  style={{ color: 'var(--tg-theme-text-color)' }}
-                >
-                  {item.productName}
-                </p>
-                <p className="text-sm font-bold" style={{ color: 'var(--tg-theme-text-color)' }}>
-                  €{(item.unitPrice * item.quantity).toFixed(2)}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--tg-theme-hint-color, #9ca3af)' }}>
-                  €{item.unitPrice.toFixed(2)} / unité
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
-                  style={{
-                    backgroundColor: 'var(--tg-theme-secondary-bg-color, #f1f5f9)',
-                    color: 'var(--tg-theme-text-color)',
-                  }}
-                >
-                  −
-                </button>
-                <span
-                  className="w-6 text-center text-sm font-semibold"
-                  style={{ color: 'var(--tg-theme-text-color)' }}
-                >
-                  {item.quantity}
-                </span>
-                <button
-                  onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
-                  style={{
-                    backgroundColor: 'var(--tg-theme-button-color, #0f172a)',
-                    color: 'var(--tg-theme-button-text-color, #fff)',
-                  }}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+    <div style={{ background: '#050505', minHeight: '100vh' }}>
+      <Header onBack={() => navigate(-1)} count={items.length} />
+
+      <div style={{ padding: '16px 16px 48px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+        {/* Items */}
+        {items.map((item) => (
+          <CartRow
+            key={item.productId}
+            item={item}
+            onDecrement={() => updateQuantity(item.productId, item.quantity - 1)}
+            onIncrement={() => updateQuantity(item.productId, item.quantity + 1)}
+          />
+        ))}
 
         {/* Note */}
-        <div
-          className="rounded-xl p-4 mb-4 border"
-          style={{
-            borderColor: 'var(--tg-theme-hint-color, #e2e8f0)',
-            backgroundColor: 'var(--tg-theme-bg-color, #fff)',
-          }}
-        >
-          <label
-            className="block text-sm font-medium mb-2"
-            style={{ color: 'var(--tg-theme-text-color)' }}
-          >
-            Note personnelle (optionnel)
-          </label>
+        <div style={{
+          background: '#111', borderRadius: 14,
+          border: '1px solid rgba(255,255,255,0.07)',
+          overflow: 'hidden', marginTop: 4,
+        }}>
+          <div style={{ padding: '12px 16px 0' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 8 }}>
+              NOTE (OPTIONNEL)
+            </div>
+          </div>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Ex: Livrer après 17h, sonnette gauche..."
+            placeholder="Instructions de livraison..."
             rows={3}
-            className="w-full rounded-lg p-3 text-sm resize-none outline-none"
             style={{
-              backgroundColor: 'var(--tg-theme-secondary-bg-color, #f8fafc)',
-              color: 'var(--tg-theme-text-color)',
-              border: '1px solid var(--tg-theme-hint-color, #e2e8f0)',
+              width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none',
+              padding: '0 16px 14px', fontSize: 12, color: 'rgba(255,255,255,0.7)',
+              fontFamily: '"JetBrains Mono", monospace', boxSizing: 'border-box',
+              caretColor: '#fbbf24',
             }}
           />
         </div>
 
         {/* Summary */}
-        <div
-          className="rounded-xl p-4 border"
-          style={{
-            borderColor: 'var(--tg-theme-hint-color, #e2e8f0)',
-            backgroundColor: 'var(--tg-theme-bg-color, #fff)',
-          }}
-        >
-          <div className="flex justify-between text-sm mb-1">
-            <span style={{ color: 'var(--tg-theme-hint-color, #6b7280)' }}>Sous-total</span>
-            <span className="font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
+        <div style={{
+          background: '#111', borderRadius: 14,
+          border: '1px solid rgba(251,191,36,0.15)',
+          borderLeft: '3px solid rgba(251,191,36,0.6)',
+          padding: '14px 16px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace' }}>
+              SOUS-TOTAL ({items.reduce((s, i) => s + i.quantity, 0)} article{items.reduce((s, i) => s + i.quantity, 0) > 1 ? 's' : ''})
+            </span>
+            <span style={{ fontFamily: '"Bebas Neue", "Impact", sans-serif', fontSize: 26, color: '#fbbf24', letterSpacing: '0.04em', lineHeight: 1 }}>
               €{subtotal().toFixed(2)}
             </span>
           </div>
-          <p className="text-xs" style={{ color: 'var(--tg-theme-hint-color, #9ca3af)' }}>
-            + frais de livraison calculés à l&apos;étape suivante
-          </p>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.1em' }}>
+            FRAIS DE LIVRAISON CALCULÉS À L'ÉTAPE SUIVANTE
+          </div>
+        </div>
+
+      </div>
+      <Fonts />
+    </div>
+  )
+}
+
+function Header({ onBack, count }: { onBack: () => void; count: number }) {
+  return (
+    <div style={{
+      position: 'sticky', top: 0, zIndex: 40,
+      background: 'rgba(5,5,5,0.92)', backdropFilter: 'blur(12px)',
+      borderBottom: '1px solid rgba(251,191,36,0.15)',
+      padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
+    }}>
+      <button onClick={onBack} style={{
+        width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+        border: '1px solid rgba(251,191,36,0.2)', background: 'rgba(251,191,36,0.08)',
+        color: 'rgba(251,191,36,0.9)', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+      }}>←</button>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: '"Bebas Neue", "Impact", sans-serif', fontSize: 18, letterSpacing: '0.08em', color: '#fff', lineHeight: 1 }}>
+          MON PANIER
+        </div>
+        {count > 0 && (
+          <div style={{ fontSize: 10, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(251,191,36,0.6)', marginTop: 2, letterSpacing: '0.1em' }}>
+            {count} article{count > 1 ? 's' : ''}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function CartRow({ item, onDecrement, onIncrement }: {
+  item: { productId: number; productName: string; productImageUrl: string; unitPrice: number; quantity: number }
+  onDecrement: () => void
+  onIncrement: () => void
+}) {
+  const [imgError, setImgError] = useState(false)
+
+  return (
+    <div style={{
+      background: '#111', borderRadius: 14,
+      border: '1px solid rgba(255,255,255,0.07)',
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 14px',
+    }}>
+      {/* Card thumbnail */}
+      <div style={{
+        width: 72, height: 45, borderRadius: 8, overflow: 'hidden', flexShrink: 0,
+        border: '1px solid rgba(255,255,255,0.1)', background: '#1a1a1a',
+      }}>
+        {item.productImageUrl && !imgError
+          ? <img
+              src={item.productImageUrl}
+              alt=""
+              onError={() => setImgError(true)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          : <div style={{
+              width: '100%', height: '100%',
+              background: 'linear-gradient(135deg,#1c1c1e,#0d0d0d)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{ width: 26, height: 18, borderRadius: 3, background: 'linear-gradient(135deg,#b8860b,#ffd700,#a07010)' }} />
+            </div>
+        }
+      </div>
+
+      {/* Name + price */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 700,
+          color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          marginBottom: 4,
+        }}>
+          {item.productName}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ fontFamily: '"Bebas Neue", "Impact", sans-serif', fontSize: 18, color: '#fbbf24', letterSpacing: '0.04em', lineHeight: 1 }}>
+            €{(item.unitPrice * item.quantity).toFixed(2)}
+          </span>
+          {item.quantity > 1 && (
+            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace' }}>
+              €{item.unitPrice.toFixed(2)} × {item.quantity}
+            </span>
+          )}
         </div>
       </div>
-    </>
+
+      {/* Qty controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <button
+          onClick={onDecrement}
+          style={{
+            width: 30, height: 30, borderRadius: 8,
+            border: '1px solid rgba(255,255,255,0.12)', background: 'transparent',
+            color: item.quantity === 1 ? '#ef4444' : 'rgba(255,255,255,0.5)',
+            cursor: 'pointer', fontSize: 16, lineHeight: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >−</button>
+        <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: '"JetBrains Mono", monospace', minWidth: 16, textAlign: 'center' }}>
+          {item.quantity}
+        </span>
+        <button
+          onClick={onIncrement}
+          style={{
+            width: 30, height: 30, borderRadius: 8,
+            background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
+            color: '#fbbf24', cursor: 'pointer', fontSize: 18, lineHeight: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >+</button>
+      </div>
+    </div>
+  )
+}
+
+function Fonts() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');
+      textarea::placeholder { color: rgba(255,255,255,0.18); }
+    `}</style>
   )
 }
