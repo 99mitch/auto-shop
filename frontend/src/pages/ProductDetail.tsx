@@ -20,18 +20,18 @@ const mk = (id: number, bin: string, name: string, price: number, stock: number,
 })
 
 const MOCK_CARDS: MockCard[] = [
-  mk(1,  '414720', 'Visa Classic FR',    12,  8,  1, 'Visa',       'visa', 'Visa Classic France. Balance vérifiée. Livraison immédiate.'),
-  mk(2,  '414709', 'Visa Gold UK',       22,  5,  1, 'Visa',       'visa', 'Visa Gold United Kingdom. CVV inclus.'),
-  mk(3,  '422150', 'Visa Platinum DE',   35,  3,  1, 'Visa',       'visa', 'Visa Platinum Allemagne. Haut plafond.'),
-  mk(4,  '424631', 'Visa Business US',   55,  6,  1, 'Visa',       'visa', 'Visa Business USA. Solde élevé garanti.'),
-  mk(5,  '431940', 'Visa Infinite BE',   75,  2,  1, 'Visa',       'visa', 'Visa Infinite Belgique. Limite premium.'),
-  mk(6,  '438857', 'Visa Signature ES',  40,  9,  1, 'Visa',       'visa', 'Visa Signature Espagne. Frais zéro.'),
-  mk(7,  '450875', 'Visa Debit NL',      9,   15, 1, 'Visa',       'visa', 'Visa Debit Pays-Bas. Format fullz disponible.'),
-  mk(8,  '453641', 'Visa Electron IT',   11,  7,  1, 'Visa',       'visa', 'Visa Electron Italie. Testé & valide.'),
-  mk(9,  '465901', 'Visa Prepaid CH',    18,  0,  1, 'Visa',       'visa', 'Visa Prépayé Suisse. Rechargeable.'),
-  mk(10, '522166', 'MC Standard FR',     14,  10, 2, 'Mastercard', 'mc',   'Mastercard Standard France. CVV + expiry inclus.'),
-  mk(11, '529204', 'MC Gold UK',         28,  4,  2, 'Mastercard', 'mc',   'Mastercard Gold UK. Limite 5000£.'),
-  mk(12, '540010', 'MC Platinum DE',     42,  1,  2, 'Mastercard', 'mc',   'Mastercard Platinum Allemagne. Très haut de gamme.'),
+  mk(1,  '497203', 'Crédit Mutuel Visa Classic',      18, 8,  1, 'Visa',       'visa', 'Crédit Mutuel — Visa Classic. Balance vérifiée, CVV inclus. Livraison immédiate.'),
+  mk(2,  '497207', 'Crédit Mutuel Visa Gold',         30, 3,  1, 'Visa',       'visa', 'Crédit Mutuel — Visa Gold. Plafond élevé. CVV + date inclus.'),
+  mk(3,  '497208', 'CIC Visa Premier',                45, 5,  1, 'Visa',       'visa', 'CIC — Visa Premier. Haut de gamme. Fullz disponible sur demande.'),
+  mk(4,  '497490', 'Crédit Agricole Visa Classic',    15, 12, 1, 'Visa',       'visa', 'Crédit Agricole — Visa Classic. Testé & valide. CVV inclus.'),
+  mk(5,  '497492', 'Crédit Agricole Visa Premier',    38, 2,  1, 'Visa',       'visa', 'Crédit Agricole — Visa Premier. Limite premium. Stock limité.'),
+  mk(6,  '497410', 'LCL Visa Classic',                20, 9,  1, 'Visa',       'visa', 'LCL — Visa Classic. Balance vérifiée. Livraison en moins de 24h.'),
+  mk(7,  '497413', 'LCL Visa Premier',                42, 6,  1, 'Visa',       'visa', 'LCL — Visa Premier. Haut plafond. CVV + expiry fournis.'),
+  mk(8,  '497974', 'BNP Paribas Visa Premier',        55, 4,  1, 'Visa',       'visa', 'BNP Paribas — Visa Premier. Compte vérifié, solde garanti.'),
+  mk(9,  '498208', 'Société Générale Visa Premier',   48, 7,  1, 'Visa',       'visa', 'Société Générale — Visa Premier. Validité longue durée. Fullz dispo.'),
+  mk(10, '534543', 'BNP Paribas Mastercard Gold',     50, 3,  2, 'Mastercard', 'mc',   'BNP Paribas — Mastercard Gold. Solde élevé. CVV inclus.'),
+  mk(11, '529941', 'Société Générale Mastercard',     35, 8,  2, 'Mastercard', 'mc',   'Société Générale — Mastercard Standard. Balance testée. Livraison immédiate.'),
+  mk(12, '497110', 'La Banque Postale Visa',          12, 0,  1, 'Visa',       'visa', 'La Banque Postale — Visa Classic. Rupture temporaire. Réapprovisionnement sous 48h.'),
 ]
 
 export default function ProductDetail() {
