@@ -170,6 +170,7 @@ export default function Checkout() {
 
         {/* Order recap */}
         <Section label="RÉCAPITULATIF">
+          <div style={{ maxHeight: 180, overflowY: 'auto' }}>
           {items.map((item, i) => (
             <div key={item.productId} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -195,6 +196,7 @@ export default function Checkout() {
               </span>
             </div>
           ))}
+          </div>
         </Section>
 
         {/* Format */}
