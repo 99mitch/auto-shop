@@ -86,8 +86,8 @@ export default function ProductDetail() {
     product ? `Ajouter au panier — €${product.price.toFixed(2)}` : 'Chargement...',
     handleAddToCart,
     !!product && product.stock > 0 && !showSheet,
-    '#b45309',
-    '#fef3c7',
+    '#1a1500',
+    '#fbbf24',
   )
 
   if (isLoading) {
