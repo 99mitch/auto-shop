@@ -283,6 +283,8 @@ export default function ProductDetail() {
           productId={product.id}
           productName={product.name}
           productPrice={product.price}
+          bin={mockCard?.bin}
+          niveau={mockCard?.niveau}
           onClose={() => setShowSheet(false)}
         />
       )}

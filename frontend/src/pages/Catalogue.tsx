@@ -189,7 +189,14 @@ export default function Catalogue() {
       </div>
 
       {addedProduct && (
-        <AddedToCartSheet productId={addedProduct.id} productName={addedProduct.name} productPrice={addedProduct.price} onClose={() => setAddedProduct(null)} />
+        <AddedToCartSheet
+          productId={addedProduct.id}
+          productName={addedProduct.name}
+          productPrice={addedProduct.price}
+          bin={(addedProduct as MockCard).bin}
+          niveau={(addedProduct as MockCard).niveau}
+          onClose={() => setAddedProduct(null)}
+        />
       )}
 
       <style>{`
