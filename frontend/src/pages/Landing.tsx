@@ -25,6 +25,18 @@ export default function Landing() {
         <CartIcon dark />
       </div>
 
+      {/* Profile icon */}
+      <button
+        onClick={() => navigate('/profile')}
+        style={{
+          position: 'absolute', top: 16, left: 16, zIndex: 50,
+          width: 36, height: 36, borderRadius: 9,
+          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+          color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+        }}
+      >👤</button>
+
       {/* Header */}
       <div style={{
         position: 'relative', zIndex: 10,
