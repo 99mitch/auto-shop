@@ -1,11 +1,10 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import WebApp from '@twa-dev/sdk'
 import { api } from '../lib/api'
-import type { Address, Favorite } from 'floramini-types'
+import type { Favorite } from 'floramini-types'
 import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
-import LoadingSkeleton from '../components/LoadingSkeleton'
 import { useAuthStore } from '../stores/auth'
 
 export default function Profile() {
@@ -15,31 +14,10 @@ export default function Profile() {
 
   const { isAdmin, isCollab } = useAuthStore()
   const tgUser = WebApp.initDataUnsafe?.user
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newAddr, setNewAddr] = useState({ label: 'Domicile', street: '', city: '', zip: '' })
-
-  const { data: addresses = [], isLoading: addrLoading } = useQuery<Address[]>({
-    queryKey: ['profile-addresses'],
-    queryFn: () => api.get('/api/profile/addresses').then((r) => r.data),
-  })
 
   const { data: favorites = [], isLoading: favLoading } = useQuery<Favorite[]>({
     queryKey: ['profile-favorites'],
     queryFn: () => api.get('/api/profile/favorites').then((r) => r.data),
-  })
-
-  const addAddress = useMutation({
-    mutationFn: () => api.post('/api/profile/addresses', newAddr),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile-addresses'] })
-      setShowAddForm(false)
-      setNewAddr({ label: 'Domicile', street: '', city: '', zip: '' })
-    },
-  })
-
-  const deleteAddress = useMutation({
-    mutationFn: (id: number) => api.delete(`/api/profile/addresses/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile-addresses'] }),
   })
 
   const removeFavorite = useMutation({
@@ -47,193 +25,139 @@ export default function Profile() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile-favorites'] }),
   })
 
+  const name = tgUser
+    ? `${tgUser.first_name}${tgUser.last_name ? ` ${tgUser.last_name}` : ''}`
+    : 'Utilisateur'
+
   return (
-    <div className="p-4 space-y-4">
-      {/* User info */}
-      <div
-        className="rounded-2xl p-4 flex items-center gap-4"
-        style={{ backgroundColor: 'var(--tg-theme-secondary-bg-color, #f9fafb)' }}
-      >
-        {tgUser?.photo_url ? (
-          <img src={tgUser.photo_url} alt="avatar" className="w-14 h-14 rounded-full object-cover" />
-        ) : (
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center text-2xl"
-            style={{ backgroundColor: 'var(--tg-theme-button-color, #3b82f6)', color: '#fff' }}
-          >
-            🌸
-          </div>
-        )}
+    <div style={{ background: '#050505', height: '100%', display: 'flex', flexDirection: 'column' }}>
+
+      {/* Header */}
+      <div style={{
+        flexShrink: 0,
+        background: 'rgba(5,5,5,0.95)', backdropFilter: 'blur(14px)',
+        borderBottom: '1px solid rgba(251,191,36,0.15)',
+        padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <button onClick={() => navigate('/')} style={{
+          width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+          border: '1px solid rgba(251,191,36,0.2)', background: 'rgba(251,191,36,0.08)',
+          color: 'rgba(251,191,36,0.9)', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
+        }}>←</button>
         <div>
-          <p className="font-bold text-base" style={{ color: 'var(--tg-theme-text-color)' }}>
-            {tgUser ? `${tgUser.first_name}${tgUser.last_name ? ` ${tgUser.last_name}` : ''}` : 'Utilisateur'}
-          </p>
+          <div style={{ fontFamily: '"Bebas Neue", "Impact", sans-serif', fontSize: 17, letterSpacing: '0.08em', color: '#fff', lineHeight: 1 }}>
+            MON PROFIL
+          </div>
           {tgUser?.username && (
-            <p className="text-sm" style={{ color: 'var(--tg-theme-hint-color, #9ca3af)' }}>
+            <div style={{ fontSize: 9, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(251,191,36,0.5)', marginTop: 2, letterSpacing: '0.1em' }}>
               @{tgUser.username}
-            </p>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Quick links */}
-      <button
-        onClick={() => navigate('/orders')}
-        className="w-full flex items-center justify-between rounded-2xl p-4"
-        style={{ backgroundColor: 'var(--tg-theme-secondary-bg-color, #f9fafb)' }}
-      >
-        <span className="text-sm font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
-          📦 Mes commandes
-        </span>
-        <span style={{ color: 'var(--tg-theme-hint-color, #9ca3af)' }}>›</span>
-      </button>
+      {/* Scrollable content */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-      {isAdmin && (
-        <button
-          onClick={() => navigate('/admin')}
-          className="w-full flex items-center justify-between rounded-2xl p-4"
-          style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)' }}
-        >
-          <span className="text-sm font-semibold" style={{ color: '#fbbf24', fontFamily: '"JetBrains Mono", monospace' }}>
-            ⚙ Panel Admin
-          </span>
-          <span style={{ color: '#fbbf24' }}>›</span>
-        </button>
-      )}
-
-      {(isCollab || isAdmin) && (
-        <button
-          onClick={() => navigate('/collab')}
-          className="w-full flex items-center justify-between rounded-2xl p-4"
-          style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)' }}
-        >
-          <span className="text-sm font-semibold" style={{ color: '#4ade80', fontFamily: '"JetBrains Mono", monospace' }}>
-            ◈ Mon espace collab
-          </span>
-          <span style={{ color: '#4ade80' }}>›</span>
-        </button>
-      )}
-
-      {/* Addresses */}
-      <div
-        className="rounded-2xl p-4"
-        style={{ backgroundColor: 'var(--tg-theme-secondary-bg-color, #f9fafb)' }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
-            Mes adresses
-          </h3>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="text-xs px-3 py-1 rounded-full"
-            style={{
-              backgroundColor: 'var(--tg-theme-button-color, #3b82f6)',
-              color: 'var(--tg-theme-button-text-color, #fff)',
-            }}
-          >
-            + Ajouter
-          </button>
+        {/* Avatar + identity */}
+        <div style={{ background: '#111', borderRadius: 14, border: '1px solid rgba(255,255,255,0.07)', padding: '16px 15px', display: 'flex', alignItems: 'center', gap: 14 }}>
+          {tgUser?.photo_url ? (
+            <img src={tgUser.photo_url} alt="avatar" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid rgba(251,191,36,0.3)' }} />
+          ) : (
+            <div style={{ width: 52, height: 52, borderRadius: '50%', flexShrink: 0, background: 'rgba(251,191,36,0.08)', border: '2px solid rgba(251,191,36,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+              👤
+            </div>
+          )}
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.04em' }}>{name}</div>
+            {tgUser?.username && (
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace', marginTop: 3 }}>@{tgUser.username}</div>
+            )}
+            {(isAdmin || isCollab) && (
+              <div style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 5, background: isAdmin ? 'rgba(251,191,36,0.1)' : 'rgba(34,197,94,0.1)', border: `1px solid ${isAdmin ? 'rgba(251,191,36,0.3)' : 'rgba(34,197,94,0.3)'}` }}>
+                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: isAdmin ? '#fbbf24' : '#4ade80', fontFamily: '"JetBrains Mono", monospace' }}>
+                  {isAdmin ? 'ADMIN' : 'COLLABORATEUR'}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {showAddForm && (
-          <div className="space-y-2 mb-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--tg-theme-bg-color, #fff)' }}>
-            {(['label', 'street', 'city', 'zip'] as const).map((f) => (
-              <input
-                key={f}
-                type="text"
-                placeholder={f === 'label' ? 'Label (ex: Domicile)' : f === 'street' ? 'Rue' : f === 'city' ? 'Ville' : 'Code postal'}
-                value={newAddr[f]}
-                onChange={(e) => setNewAddr((p) => ({ ...p, [f]: e.target.value }))}
-                className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                style={{ border: '1px solid var(--tg-theme-hint-color, #e5e7eb)', color: 'var(--tg-theme-text-color)' }}
-              />
-            ))}
-            <button
-              onClick={() => addAddress.mutate()}
-              disabled={addAddress.isPending}
-              className="w-full py-2 rounded-lg text-sm font-semibold"
-              style={{ backgroundColor: 'var(--tg-theme-button-color, #3b82f6)', color: '#fff' }}
-            >
-              {addAddress.isPending ? 'Sauvegarde...' : 'Sauvegarder'}
-            </button>
+        {/* Navigation */}
+        <div style={{ background: '#111', borderRadius: 14, border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+          <div style={{ padding: '11px 15px 0' }}>
+            <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.22)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 6 }}>NAVIGATION</div>
           </div>
-        )}
+          <NavRow label="MES COMMANDES" icon="📦" onClick={() => navigate('/orders')} />
+          {isAdmin && (
+            <NavRow label="PANEL ADMIN" icon="⚙" onClick={() => navigate('/admin')} accent="gold" />
+          )}
+          {(isCollab || isAdmin) && (
+            <NavRow label="MON ESPACE COLLAB" icon="◈" onClick={() => navigate('/collab')} accent="green" />
+          )}
+        </div>
 
-        {addrLoading ? (
-          <LoadingSkeleton className="h-12 rounded-xl" />
-        ) : addresses.length === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--tg-theme-hint-color, #9ca3af)' }}>
-            Aucune adresse enregistrée
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {addresses.map((addr) => (
-              <div key={addr.id} className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--tg-theme-text-color)' }}>
-                    {addr.label} {addr.isDefault && <span className="text-xs text-green-500">✓ défaut</span>}
-                  </p>
-                  <p className="text-xs" style={{ color: 'var(--tg-theme-hint-color, #9ca3af)' }}>
-                    {addr.street}, {addr.zip} {addr.city}
-                  </p>
-                </div>
-                <button
-                  onClick={() => deleteAddress.mutate(addr.id)}
-                  className="text-xs text-red-400 ml-2 shrink-0"
-                >
-                  Supprimer
-                </button>
-              </div>
-            ))}
+        {/* Favorites */}
+        <div style={{ background: '#111', borderRadius: 14, border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+          <div style={{ padding: '11px 15px 0' }}>
+            <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.22)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 9 }}>MES FAVORIS</div>
           </div>
-        )}
-      </div>
-
-      {/* Favorites */}
-      <div
-        className="rounded-2xl p-4"
-        style={{ backgroundColor: 'var(--tg-theme-secondary-bg-color, #f9fafb)' }}
-      >
-        <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--tg-theme-text-color)' }}>
-          Mes favoris
-        </h3>
-        {favLoading ? (
-          <LoadingSkeleton className="h-16 rounded-xl" />
-        ) : favorites.length === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--tg-theme-hint-color, #9ca3af)' }}>
-            Aucun favori pour le moment
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {favorites.map((fav) => (
-              <div
-                key={fav.id}
-                className="relative rounded-xl overflow-hidden"
-                style={{ backgroundColor: 'var(--tg-theme-bg-color, #fff)' }}
-              >
-                {fav.product && (
-                  <>
-                    <img
-                      src={fav.product.imageUrl}
-                      alt={fav.product.name}
-                      className="w-full h-20 object-cover"
-                    />
-                    <button
-                      onClick={() => removeFavorite.mutate(fav.productId)}
-                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/80 text-xs flex items-center justify-center"
-                    >
-                      ❌
-                    </button>
-                    <p className="text-xs p-2 font-medium truncate" style={{ color: 'var(--tg-theme-text-color)' }}>
+          <div style={{ padding: '0 15px 13px' }}>
+            {favLoading ? (
+              <div style={{ height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.04)', animation: 'shimmer 1.5s ease-in-out infinite' }} />
+            ) : favorites.length === 0 ? (
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono", monospace', padding: '6px 0' }}>Aucun favori pour le moment</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {favorites.map((fav) => fav.product && (
+                  <div key={fav.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)', background: '#1a1a1a' }}>
+                    <img src={fav.product.imageUrl} alt={fav.product.name} style={{ width: '100%', height: 56, objectFit: 'cover', display: 'block' }} />
+                    <button onClick={() => removeFavorite.mutate(fav.productId)} style={{
+                      position: 'absolute', top: 5, right: 5,
+                      width: 20, height: 20, borderRadius: '50%', cursor: 'pointer',
+                      background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.15)',
+                      color: 'rgba(255,255,255,0.6)', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>✕</button>
+                    <div style={{ padding: '5px 7px', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.7)', fontFamily: '"JetBrains Mono", monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {fav.product.name}
-                    </p>
-                  </>
-                )}
+                    </div>
+                    <div style={{ padding: '0 7px 6px', fontSize: 11, color: '#fbbf24', fontFamily: '"Bebas Neue", sans-serif', letterSpacing: '0.04em' }}>
+                      €{fav.product.price.toFixed(2)}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
+        </div>
+
       </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');
+        @keyframes shimmer { 0%,100%{opacity:0.4} 50%{opacity:0.7} }
+      `}</style>
     </div>
+  )
+}
+
+function NavRow({ label, icon, onClick, accent }: { label: string; icon: string; onClick: () => void; accent?: 'gold' | 'green' }) {
+  const color = accent === 'gold' ? '#fbbf24' : accent === 'green' ? '#4ade80' : 'rgba(255,255,255,0.55)'
+  const bg = accent === 'gold' ? 'rgba(251,191,36,0.04)' : accent === 'green' ? 'rgba(34,197,94,0.04)' : 'transparent'
+  const border = accent ? `1px solid ${accent === 'gold' ? 'rgba(251,191,36,0.1)' : 'rgba(34,197,94,0.1)'}` : 'none'
+
+  return (
+    <button onClick={onClick} style={{
+      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '11px 15px', cursor: 'pointer', background: bg,
+      borderTop: '1px solid rgba(255,255,255,0.04)', borderLeft: 'none', borderRight: 'none', borderBottom: border,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 14 }}>{icon}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.08em' }}>{label}</span>
+      </div>
+      <span style={{ fontSize: 14, color, opacity: 0.7 }}>›</span>
+    </button>
   )
 }
