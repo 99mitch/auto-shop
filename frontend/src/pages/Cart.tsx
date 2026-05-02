@@ -19,7 +19,7 @@ export default function Cart() {
 
   if (items.length === 0) {
     return (
-      <div style={{ background: '#050505', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: '#050505', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <Header onBack={() => navigate(-1)} count={0} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
           <div style={{ fontSize: 36, opacity: 0.2 }}>▣</div>
@@ -44,7 +44,7 @@ export default function Cart() {
   const totalQty = items.reduce((s, i) => s + i.quantity, 0)
 
   return (
-    <div style={{ background: '#050505', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: '#050505', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <Header onBack={() => navigate(-1)} count={items.length} />
 
       {/* Scrollable items + note */}
@@ -88,7 +88,7 @@ export default function Cart() {
       </div>
 
       {/* Summary — pinned at bottom */}
-      <div style={{ flexShrink: 0, padding: '10px 16px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ flexShrink: 0, padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', background: '#050505' }}>
         <div style={{
           background: '#111', borderRadius: 14,
           border: '1px solid rgba(251,191,36,0.15)',
