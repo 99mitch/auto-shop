@@ -46,10 +46,10 @@ function MockConfirmation({ state }: { state: MockOrderState }) {
   }
 
   return (
-    <div style={{ background: '#050505', minHeight: '100vh' }}>
+    <div style={{ background: '#050505', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{
-        position: 'sticky', top: 0, zIndex: 40,
+        flexShrink: 0,
         background: 'rgba(5,5,5,0.95)', backdropFilter: 'blur(14px)',
         borderBottom: '1px solid rgba(34,197,94,0.2)',
         padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
@@ -64,12 +64,12 @@ function MockConfirmation({ state }: { state: MockOrderState }) {
             COMMANDE CONFIRMÉE
           </div>
           <div style={{ fontSize: 9, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(34,197,94,0.6)', marginTop: 2, letterSpacing: '0.1em' }}>
-            {state.deliveries.length} carte{state.deliveries.length > 1 ? 's' : ''} · {state.format} · {state.canal === 'BOT' ? 'VIA BOT' : state.email} · €{state.total.toFixed(2)}
+            {state.deliveries.length} carte{state.deliveries.length > 1 ? 's' : ''} · {state.format} · VIA BOT · €{state.total.toFixed(2)}
           </div>
         </div>
       </div>
 
-      <div style={{ padding: '12px 16px 48px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
         {/* Card selector tabs (if multiple) */}
         {state.deliveries.length > 1 && (
@@ -111,11 +111,11 @@ function MockConfirmation({ state }: { state: MockOrderState }) {
           <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.22)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 8 }}>LIVRAISON</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
-              {state.canal === 'BOT' ? '✉' : '@'}
+              ✉
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.06em' }}>
-                {state.canal === 'BOT' ? 'Envoyé dans ce chat' : state.email}
+                Envoyé dans ce chat
               </div>
               <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace', marginTop: 2 }}>
                 Format {state.format} · {state.deliveries.length} fichier{state.deliveries.length > 1 ? 's' : ''}
@@ -241,9 +241,9 @@ function RealConfirmation({ id }: { id: string }) {
   if (!order) return null
 
   return (
-    <div style={{ background: '#050505', minHeight: '100vh' }}>
+    <div style={{ background: '#050505', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{
-        position: 'sticky', top: 0, zIndex: 40,
+        flexShrink: 0,
         background: 'rgba(5,5,5,0.95)', backdropFilter: 'blur(14px)',
         borderBottom: '1px solid rgba(34,197,94,0.2)',
         padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,

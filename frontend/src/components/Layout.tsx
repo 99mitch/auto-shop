@@ -5,7 +5,7 @@ export default function Layout() {
   useTheme()
   const { pathname } = useLocation()
   const isDark = pathname === '/' || pathname.startsWith('/catalogue') || pathname.startsWith('/product')
-  const noScroll = pathname === '/' || pathname.startsWith('/product') || pathname === '/cart' || pathname === '/checkout'
+  const noScroll = pathname === '/' || pathname.startsWith('/product') || pathname === '/cart' || pathname === '/checkout' || pathname.startsWith('/order')
 
   return (
     <div

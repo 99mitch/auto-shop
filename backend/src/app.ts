@@ -7,6 +7,7 @@ import ordersRouter from './routes/orders'
 import profileRouter from './routes/profile'
 import adminRouter from './routes/admin/index'
 import webhookRouter from './routes/webhook'
+import deliverRouter from './routes/deliver'
 
 export const app = express()
 
@@ -23,6 +24,7 @@ app.use('/api/categories', categoriesRouter)
 app.use('/api/orders', ordersRouter)
 app.use('/api/profile', profileRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/deliver', deliverRouter)
 app.use('/webhook', webhookRouter)
 
 app.get('/health', (_req, res) => res.json({ ok: true }))

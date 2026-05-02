@@ -9,7 +9,6 @@ import type { Order } from 'floramini-types'
 import { MOCK_CARDS } from './Catalogue'
 
 export type Format = 'TXT' | 'JSON' | 'CSV' | 'BASE64'
-export type Canal  = 'BOT' | 'EMAIL'
 
 export interface DeliveryItem {
   productName: string
@@ -20,8 +19,6 @@ export interface DeliveryItem {
 export interface MockOrderState {
   mock: true
   format: Format
-  canal: Canal
-  email?: string
   total: number
   deliveries: DeliveryItem[]
 }
@@ -84,8 +81,6 @@ export default function Checkout() {
   const navigate = useNavigate()
   const { items, note, subtotal, clear } = useCartStore()
   const [format, setFormat] = useState<Format>('TXT')
-  const [canal, setCanal]   = useState<Canal>('BOT')
-  const [email, setEmail]   = useState('')
 
   const goBack = () => {
     if (window.history.state?.idx > 0) navigate(-1)
@@ -100,8 +95,6 @@ export default function Checkout() {
   const mutation = useMutation({
     mutationFn: async () => {
       if (isMock) {
-        // Simulate processing delay
-        await new Promise((r) => setTimeout(r, 800))
         const deliveries: DeliveryItem[] = items.flatMap((item) =>
           Array.from({ length: item.quantity }, () => ({
             productName: item.productName,
@@ -109,15 +102,18 @@ export default function Checkout() {
             payload: genCardPayload(item.productId, format),
           }))
         )
-        const state: MockOrderState = { mock: true, format, canal, email: canal === 'EMAIL' ? email : undefined, total, deliveries }
+        await api.post('/api/deliver', {
+          deliveries: deliveries.map((d) => ({ productName: d.productName, payload: d.payload })),
+          format,
+        })
+        const state: MockOrderState = { mock: true, format, total, deliveries }
         clear()
         navigate('/order/mock', { state })
         return null
       }
 
       const body: Record<string, unknown> = {
-        note: note || undefined, format, canal,
-        email: canal === 'EMAIL' ? email : undefined,
+        note: note || undefined, format,
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, options: i.options })),
       }
       const order: Order = await api.post('/api/orders', body).then((r) => r.data)
@@ -125,13 +121,13 @@ export default function Checkout() {
       return order
     },
     onSuccess: (order) => {
-      if (!order) return // mock already navigated
+      if (!order) return
       clear()
       navigate(`/order/${order.id}`)
     },
   })
 
-  const canSubmit = items.length > 0 && !mutation.isPending && (canal === 'BOT' || email.includes('@'))
+  const canSubmit = items.length > 0 && !mutation.isPending
 
   useTelegramMainButton(
     mutation.isPending ? 'TRAITEMENT...' : 'CONFIRMER LA COMMANDE',
@@ -201,7 +197,7 @@ export default function Checkout() {
         </Section>
 
         {/* Format */}
-        <Section label="FORMAT DE LIVRAISON">
+        <Section label="FORMAT DU FICHIER">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 10 }}>
             {FORMATS.map((f) => (
               <button key={f.value} onClick={() => setFormat(f.value)} style={{
@@ -217,54 +213,24 @@ export default function Checkout() {
               </button>
             ))}
           </div>
-          {/* Live preview */}
           <div style={{ borderRadius: 8, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)', padding: '9px 11px' }}>
             <div style={{ fontSize: 7, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.18)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 5 }}>APERÇU</div>
             <pre style={{ margin: 0, fontSize: 9, color: 'rgba(251,191,36,0.5)', fontFamily: '"JetBrains Mono", monospace', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-              {items[0] ? genCardPayload(items[0].productId, format).slice(0, 160) + (genCardPayload(items[0].productId, format).length > 160 ? '…' : '') : ''}
+              {items[0] ? (() => { const p = genCardPayload(items[0].productId, format); return p.slice(0, 160) + (p.length > 160 ? '…' : '') })() : ''}
             </pre>
           </div>
         </Section>
 
-        {/* Canal */}
-        <Section label="CANAL DE LIVRAISON">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {([
-              { value: 'BOT' as Canal,   title: 'VIA CE BOT',  sub: 'Livraison instantanée dans ce chat' },
-              { value: 'EMAIL' as Canal, title: 'PAR EMAIL',   sub: 'Envoi vers une adresse mail' },
-            ]).map((opt) => (
-              <button key={opt.value} onClick={() => setCanal(opt.value)} style={{
-                borderRadius: 10, padding: '11px 14px', cursor: 'pointer', textAlign: 'left',
-                background: canal === opt.value ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${canal === opt.value ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.07)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              }}>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: canal === opt.value ? '#fbbf24' : 'rgba(255,255,255,0.65)', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.08em', marginBottom: 2 }}>{opt.title}</div>
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', fontFamily: '"JetBrains Mono", monospace' }}>{opt.sub}</div>
-                </div>
-                <div style={{
-                  width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                  border: `1px solid ${canal === opt.value ? '#fbbf24' : 'rgba(255,255,255,0.12)'}`,
-                  background: canal === opt.value ? 'rgba(251,191,36,0.2)' : 'transparent',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 9, color: '#fbbf24',
-                }}>{canal === opt.value && '✓'}</div>
-              </button>
-            ))}
-
-            {canal === 'EMAIL' && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 10, padding: '9px 13px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', flexShrink: 0 }}>@</span>
-                <input
-                  type="email" placeholder="adresse@email.com" value={email}
-                  onChange={(e) => setEmail(e.target.value)} autoFocus
-                  style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 11, color: '#fff', fontFamily: '"JetBrains Mono", monospace', caretColor: '#fbbf24' }}
-                />
-              </div>
-            )}
+        {/* Delivery info */}
+        <div style={{ background: '#111', borderRadius: 14, border: '1px solid rgba(255,255,255,0.07)', padding: '12px 15px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>✉</div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.06em', marginBottom: 2 }}>LIVRAISON DANS CE CHAT</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace' }}>
+              Le fichier {format} sera envoyé dans votre conversation avec le bot
+            </div>
           </div>
-        </Section>
+        </div>
 
         {/* Note */}
         {note && (
@@ -281,7 +247,7 @@ export default function Checkout() {
         }}>
           <div>
             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 2 }}>TOTAL</div>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.08em' }}>livraison incluse</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono", monospace' }}>fichier inclus dans la commande</div>
           </div>
           <span style={{ fontFamily: '"Bebas Neue", "Impact", sans-serif', fontSize: 26, color: '#fbbf24', letterSpacing: '0.04em', lineHeight: 1 }}>
             €{total.toFixed(2)}
@@ -298,7 +264,6 @@ export default function Checkout() {
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');
-        input::placeholder { color: rgba(255,255,255,0.18); }
       `}</style>
     </div>
   )
