@@ -26,7 +26,7 @@ const mc = (
   category: { id: catId, name: catName, slug: catSlug, order: catId },
 })
 
-const MOCK_CARDS: MockCard[] = [
+export const MOCK_CARDS: MockCard[] = [
   mc(1,  '497203', 'Crédit Mutuel Visa Classic',    18, 8,  1, 'Visa', 'visa', 'Crédit Mutuel — Visa Classic. Balance vérifiée, CVV inclus.',  'CLASSIC', 34, '75012', ['VISA', 'DEBIT',   "AUJOURD'HUI"],                  'CRÉDIT MUTUEL'),
   mc(2,  '497207', 'Crédit Mutuel Visa Gold',       30, 3,  1, 'Visa', 'visa', 'Crédit Mutuel — Visa Gold. Plafond élevé. CVV + date inclus.', 'GOLD',    48, '69001', ['VISA', 'CREDIT', 'AMELI', 'ANDROID', 'J-1'],       'CRÉDIT MUTUEL'),
   mc(3,  '497208', 'CIC Visa Premier',              45, 5,  1, 'Visa', 'visa', 'CIC — Visa Premier. Fullz disponible sur demande.',            'PREMIER', 52, '33000', ['VISA', 'CREDIT', 'AMELI', 'IPHONE', "AUJOURD'HUI"], 'CIC'),
