@@ -12,7 +12,7 @@ export default function Profile() {
   const queryClient = useQueryClient()
   useTelegramBackButton(useCallback(() => navigate('/'), [navigate]))
 
-  const { isAdmin, isCollab } = useAuthStore()
+  const { isAdmin, isCollab, isLoading: authLoading } = useAuthStore()
   const tgUser = WebApp.initDataUnsafe?.user
 
   const { data: favorites = [], isLoading: favLoading } = useQuery<Favorite[]>({
@@ -90,10 +90,10 @@ export default function Profile() {
             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.22)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 6 }}>NAVIGATION</div>
           </div>
           <NavRow label="MES COMMANDES" icon="📦" onClick={() => navigate('/orders')} />
-          {isAdmin && (
+          {!authLoading && isAdmin && (
             <NavRow label="PANEL ADMIN" icon="⚙" onClick={() => navigate('/admin')} accent="gold" />
           )}
-          {(isCollab || isAdmin) && (
+          {!authLoading && (isCollab || isAdmin) && (
             <NavRow label="MON ESPACE COLLAB" icon="◈" onClick={() => navigate('/collab')} accent="green" />
           )}
         </div>

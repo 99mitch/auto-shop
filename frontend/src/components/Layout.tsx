@@ -4,8 +4,8 @@ import { useTheme } from '../hooks/useTheme'
 export default function Layout() {
   useTheme()
   const { pathname } = useLocation()
-  const isDark = pathname === '/' || pathname.startsWith('/catalogue') || pathname.startsWith('/product')
-  const noScroll = pathname === '/' || pathname.startsWith('/product') || pathname === '/cart' || pathname === '/checkout' || pathname.startsWith('/order') || pathname.startsWith('/collab') || pathname.startsWith('/admin')
+  const isDark = pathname === '/' || pathname.startsWith('/catalogue') || pathname.startsWith('/product') || pathname === '/profile' || pathname.startsWith('/collab') || pathname.startsWith('/admin')
+  const noScroll = pathname === '/' || pathname.startsWith('/product') || pathname === '/cart' || pathname === '/checkout' || pathname.startsWith('/order') || pathname.startsWith('/collab') || pathname.startsWith('/admin') || pathname === '/profile'
 
   return (
     <div
