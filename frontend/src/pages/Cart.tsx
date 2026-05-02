@@ -8,7 +8,12 @@ export default function Cart() {
   const navigate = useNavigate()
   const { items, note, updateQuantity, setNote, subtotal } = useCartStore()
 
-  useTelegramBackButton(() => navigate(-1))
+  const goBack = () => {
+    if (window.history.state?.idx > 0) navigate(-1)
+    else navigate('/')
+  }
+
+  useTelegramBackButton(goBack)
   useTelegramMainButton(
     `Commander — €${subtotal().toFixed(2)}`,
     () => navigate('/checkout'),
@@ -20,7 +25,7 @@ export default function Cart() {
   if (items.length === 0) {
     return (
       <div style={{ background: '#050505', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <Header onBack={() => navigate(-1)} count={0} />
+        <Header onBack={goBack} count={0} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
           <div style={{ fontSize: 36, opacity: 0.2 }}>▣</div>
           <p style={{ fontSize: 12, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.15em' }}>PANIER VIDE</p>
@@ -45,7 +50,7 @@ export default function Cart() {
 
   return (
     <div style={{ background: '#050505', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <Header onBack={() => navigate(-1)} count={items.length} />
+      <Header onBack={goBack} count={items.length} />
 
       {/* Scrollable items + note */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
