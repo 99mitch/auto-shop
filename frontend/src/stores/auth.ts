@@ -7,6 +7,7 @@ import type { User } from 'floramini-types'
 interface AuthState {
   user: User | null
   isAdmin: boolean
+  isCollab: boolean
   isLoading: boolean
   init: () => Promise<void>
 }
@@ -14,6 +15,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAdmin: false,
+  isCollab: false,
   isLoading: true,
   init: async () => {
     set({ isLoading: true })
@@ -23,7 +25,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         headers: { 'X-Telegram-Init-Data': WebApp.initData || 'dev-mode' },
       })
       setToken(res.data.token)
-      set({ user: res.data.user, isAdmin: res.data.isAdmin, isLoading: false })
+      set({ user: res.data.user, isAdmin: res.data.isAdmin, isCollab: res.data.isCollab ?? false, isLoading: false })
     } catch {
       set({ isLoading: false })
     }

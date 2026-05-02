@@ -134,6 +134,7 @@ router.post('/:id/pay', async (req: AuthRequest, res) => {
 
   const order = await prisma.order.findFirst({
     where: { id, userId: req.userId!, status: 'PENDING' },
+    include: { items: { include: { product: { select: { collaboratorId: true } } } } },
   })
 
   if (!order) {
@@ -146,6 +147,24 @@ router.post('/:id/pay', async (req: AuthRequest, res) => {
     data: { status: 'CONFIRMED' },
     include: { items: { include: { product: true } }, address: true },
   })
+
+  // Dispatch collaborator commissions (20% platform, 80% collab)
+  const earningsToCreate = order.items
+    .filter((item) => item.product.collaboratorId !== null)
+    .map((item) => {
+      const gross = item.unitPrice * item.quantity
+      return {
+        orderId: order.id,
+        orderItemId: item.id,
+        collaboratorId: item.product.collaboratorId!,
+        amount: parseFloat((gross * 0.8).toFixed(2)),
+        platformFee: parseFloat((gross * 0.2).toFixed(2)),
+      }
+    })
+
+  if (earningsToCreate.length > 0) {
+    await prisma.collaboratorEarning.createMany({ data: earningsToCreate })
+  }
 
   notifyOrderStatus(req.telegramId!, order.id, 'CONFIRMED', order.total)
 

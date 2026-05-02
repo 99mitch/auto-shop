@@ -6,6 +6,7 @@ import categoriesRouter from './routes/categories'
 import ordersRouter from './routes/orders'
 import profileRouter from './routes/profile'
 import adminRouter from './routes/admin/index'
+import collabRouter from './routes/collab/index'
 import webhookRouter from './routes/webhook'
 import deliverRouter from './routes/deliver'
 
@@ -24,6 +25,7 @@ app.use('/api/categories', categoriesRouter)
 app.use('/api/orders', ordersRouter)
 app.use('/api/profile', profileRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/collab', collabRouter)
 app.use('/api/deliver', deliverRouter)
 app.use('/webhook', webhookRouter)
 

@@ -8,16 +8,19 @@ datasource db {
 }
 
 model User {
-  id         Int        @id @default(autoincrement())
-  telegramId String     @unique
-  firstName  String
-  lastName   String?
-  username   String?
-  photoUrl   String?
-  createdAt  DateTime   @default(now())
-  orders     Order[]
-  addresses  Address[]
-  favorites  Favorite[]
+  id           Int                   @id @default(autoincrement())
+  telegramId   String                @unique
+  firstName    String
+  lastName     String?
+  username     String?
+  photoUrl     String?
+  createdAt    DateTime              @default(now())
+  role         String                @default("CUSTOMER")
+  orders       Order[]
+  addresses    Address[]
+  favorites    Favorite[]
+  products     Product[]             @relation("CollaboratorProducts")
+  earnings     CollaboratorEarning[]
 }
 
 model Address {
@@ -41,45 +44,62 @@ model Category {
 }
 
 model Product {
-  id          Int         @id @default(autoincrement())
-  categoryId  Int
-  category    Category    @relation(fields: [categoryId], references: [id])
-  name        String
-  description String
-  price       Float
-  stock       Int         @default(0)
-  imageUrl    String
-  images      String      @default("[]")
-  isActive    Boolean     @default(true)
-  orderItems  OrderItem[]
-  favorites   Favorite[]
+  id             Int                   @id @default(autoincrement())
+  categoryId     Int
+  category       Category              @relation(fields: [categoryId], references: [id])
+  name           String
+  description    String
+  price          Float
+  stock          Int                   @default(0)
+  imageUrl       String
+  images         String                @default("[]")
+  isActive       Boolean               @default(true)
+  collaboratorId Int?
+  collaborator   User?                 @relation("CollaboratorProducts", fields: [collaboratorId], references: [id])
+  orderItems     OrderItem[]
+  favorites      Favorite[]
 }
 
 model Order {
-  id           Int         @id @default(autoincrement())
+  id           Int                   @id @default(autoincrement())
   userId       Int
-  user         User        @relation(fields: [userId], references: [id])
+  user         User                  @relation(fields: [userId], references: [id])
   addressId    Int?
-  address      Address?    @relation(fields: [addressId], references: [id])
-  status       String      @default("PENDING")
+  address      Address?              @relation(fields: [addressId], references: [id])
+  status       String                @default("PENDING")
   note         String?
   subtotal     Float
   deliveryFee  Float
   total        Float
   deliverySlot String
-  createdAt    DateTime    @default(now())
+  createdAt    DateTime              @default(now())
   items        OrderItem[]
+  earnings     CollaboratorEarning[]
 }
 
 model OrderItem {
-  id        Int     @id @default(autoincrement())
+  id        Int                  @id @default(autoincrement())
   orderId   Int
-  order     Order   @relation(fields: [orderId], references: [id])
+  order     Order                @relation(fields: [orderId], references: [id])
   productId Int
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product              @relation(fields: [productId], references: [id])
   quantity  Int
   unitPrice Float
-  options   String  @default("{}")
+  options   String               @default("{}")
+  earning   CollaboratorEarning?
+}
+
+model CollaboratorEarning {
+  id             Int       @id @default(autoincrement())
+  orderId        Int
+  order          Order     @relation(fields: [orderId], references: [id])
+  orderItemId    Int       @unique
+  orderItem      OrderItem @relation(fields: [orderItemId], references: [id])
+  collaboratorId Int
+  collaborator   User      @relation(fields: [collaboratorId], references: [id])
+  amount         Float
+  platformFee    Float
+  createdAt      DateTime  @default(now())
 }
 
 model Favorite {

@@ -6,6 +6,8 @@ export type OrderStatus =
   | 'DELIVERED'
   | 'CANCELLED'
 
+export type UserRole = 'CUSTOMER' | 'COLLABORATOR' | 'ADMIN'
+
 export interface User {
   id: number
   telegramId: string
@@ -14,6 +16,7 @@ export interface User {
   username: string | null
   photoUrl: string | null
   createdAt: string
+  role: UserRole
 }
 
 export interface Address {
@@ -44,6 +47,40 @@ export interface Product {
   imageUrl: string
   images: string[]
   isActive: boolean
+  collaboratorId?: number | null
+}
+
+export interface CollaboratorEarning {
+  id: number
+  orderId: number
+  orderItemId: number
+  collaboratorId: number
+  amount: number
+  platformFee: number
+  createdAt: string
+}
+
+export interface CollabStats {
+  totalAmount: number
+  totalPlatformFee: number
+  totalSales: number
+  productCount: number
+  recentEarnings: CollaboratorEarning[]
+  byMonth: Record<string, number>
+  topProducts: { id: number; name: string; imageUrl: string; salesCount: number }[]
+}
+
+export interface CollabUser {
+  id: number
+  telegramId: string
+  firstName: string
+  lastName: string | null
+  username: string | null
+  photoUrl: string | null
+  createdAt: string
+  productCount: number
+  totalEarnings: number
+  totalPlatformFee: number
 }
 
 export interface OrderItem {

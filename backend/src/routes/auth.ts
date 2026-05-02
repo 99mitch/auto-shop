@@ -23,7 +23,8 @@ router.post('/init', async (req: Request, res: Response) => {
     })
     const token = signJwt({ userId: user.id, telegramId: user.telegramId })
     const isAdmin = getAdminIds().includes(user.telegramId)
-    res.json({ token, user, isAdmin })
+    const isCollab = user.role === 'COLLABORATOR'
+    res.json({ token, user, isAdmin, isCollab })
     return
   }
 
@@ -49,8 +50,9 @@ router.post('/init', async (req: Request, res: Response) => {
 
     const token = signJwt({ userId: user.id, telegramId: user.telegramId })
     const isAdmin = getAdminIds().includes(user.telegramId)
+    const isCollab = user.role === 'COLLABORATOR'
 
-    res.json({ token, user, isAdmin })
+    res.json({ token, user, isAdmin, isCollab })
   } catch (err) {
     res.status(401).json({ error: 'Invalid initData' })
   }

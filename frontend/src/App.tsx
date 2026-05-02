@@ -17,6 +17,9 @@ import Dashboard from './pages/admin/Dashboard'
 import AdminOrders from './pages/admin/AdminOrders'
 import AdminProducts from './pages/admin/AdminProducts'
 import AdminSettings from './pages/admin/AdminSettings'
+import AdminCollaborators from './pages/admin/AdminCollaborators'
+import CollabDashboard from './pages/collab/CollabDashboard'
+import CollabGuard from './pages/collab/CollabGuard'
 
 const router = createBrowserRouter([
   {
@@ -33,6 +36,13 @@ const router = createBrowserRouter([
       { path: 'orders/:id', element: <OrderDetail /> },
       { path: 'profile', element: <Profile /> },
       {
+        path: 'collab',
+        element: <CollabGuard />,
+        children: [
+          { index: true, element: <CollabDashboard /> },
+        ],
+      },
+      {
         path: 'admin',
         element: <AdminGuard />,
         children: [
@@ -40,6 +50,7 @@ const router = createBrowserRouter([
           { path: 'orders', element: <AdminOrders /> },
           { path: 'products', element: <AdminProducts /> },
           { path: 'settings', element: <AdminSettings /> },
+          { path: 'collaborators', element: <AdminCollaborators /> },
         ],
       },
     ],
