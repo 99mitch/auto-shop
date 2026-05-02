@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import WebApp from '@twa-dev/sdk'
 import { api } from '../lib/api'
@@ -8,22 +8,54 @@ import { useCartStore } from '../stores/cart'
 import { useTelegramMainButton } from '../hooks/useTelegramMainButton'
 import AddedToCartSheet from '../components/AddedToCartSheet'
 import CartIcon from '../components/CartIcon'
-import LoadingSkeleton from '../components/LoadingSkeleton'
 import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
+
+const CARD_IMG = (bin: string) => `https://cardimages.imaginecurve.com/cards/${bin}.png`
+type MockCard = Omit<Product, 'categoryId' | 'isActive'> & { bin: string; categoryId?: number; isActive?: boolean }
+
+const mk = (id: number, bin: string, name: string, price: number, stock: number, catId: number, catName: string, catSlug: string, desc: string): MockCard => ({
+  id, bin, name, price, stock, imageUrl: CARD_IMG(bin), images: [], description: desc,
+  categoryId: catId, isActive: true,
+  category: { id: catId, name: catName, slug: catSlug, order: catId },
+})
+
+const MOCK_CARDS: MockCard[] = [
+  mk(1,  '414720', 'Visa Classic FR',    12,  8,  1, 'Visa',       'visa', 'Visa Classic France. Balance vérifiée. Livraison immédiate.'),
+  mk(2,  '414709', 'Visa Gold UK',       22,  5,  1, 'Visa',       'visa', 'Visa Gold United Kingdom. CVV inclus.'),
+  mk(3,  '422150', 'Visa Platinum DE',   35,  3,  1, 'Visa',       'visa', 'Visa Platinum Allemagne. Haut plafond.'),
+  mk(4,  '424631', 'Visa Business US',   55,  6,  1, 'Visa',       'visa', 'Visa Business USA. Solde élevé garanti.'),
+  mk(5,  '431940', 'Visa Infinite BE',   75,  2,  1, 'Visa',       'visa', 'Visa Infinite Belgique. Limite premium.'),
+  mk(6,  '438857', 'Visa Signature ES',  40,  9,  1, 'Visa',       'visa', 'Visa Signature Espagne. Frais zéro.'),
+  mk(7,  '450875', 'Visa Debit NL',      9,   15, 1, 'Visa',       'visa', 'Visa Debit Pays-Bas. Format fullz disponible.'),
+  mk(8,  '453641', 'Visa Electron IT',   11,  7,  1, 'Visa',       'visa', 'Visa Electron Italie. Testé & valide.'),
+  mk(9,  '465901', 'Visa Prepaid CH',    18,  0,  1, 'Visa',       'visa', 'Visa Prépayé Suisse. Rechargeable.'),
+  mk(10, '522166', 'MC Standard FR',     14,  10, 2, 'Mastercard', 'mc',   'Mastercard Standard France. CVV + expiry inclus.'),
+  mk(11, '529204', 'MC Gold UK',         28,  4,  2, 'Mastercard', 'mc',   'Mastercard Gold UK. Limite 5000£.'),
+  mk(12, '540010', 'MC Platinum DE',     42,  1,  2, 'Mastercard', 'mc',   'Mastercard Platinum Allemagne. Très haut de gamme.'),
+]
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const addItem = useCartStore((s) => s.addItem)
   const [showSheet, setShowSheet] = useState(false)
+  const [imgError, setImgError] = useState(false)
 
   useTelegramBackButton(() => navigate(-1))
 
-  const { data: product, isLoading } = useQuery<Product>({
+  // Check if this is a mock card (id 1-12)
+  const numId = Number(id)
+  const mockCard = MOCK_CARDS.find((c) => c.id === numId)
+
+  const { data: apiProduct, isLoading } = useQuery<Product>({
     queryKey: ['product', id],
     queryFn: () => api.get(`/api/products/${id}`).then((r) => r.data),
     staleTime: 5 * 60 * 1000,
+    enabled: !mockCard,
   })
+
+  const product = mockCard ?? apiProduct
 
   const handleAddToCart = useCallback(() => {
     if (!product) return
@@ -102,80 +134,61 @@ export default function ProductDetail() {
         <CartIcon dark />
       </div>
 
-      {/* Card preview — full-width credit card */}
+      {/* Card preview */}
       <div style={{ padding: '20px 16px 0' }}>
         <div style={{
           width: '100%', aspectRatio: '1.586',
-          borderRadius: 18,
-          background: 'linear-gradient(145deg, #1c1c1e 0%, #111111 55%, #0d0d0d 100%)',
+          borderRadius: 18, overflow: 'hidden',
           border: '1px solid rgba(251,191,36,0.25)',
-          position: 'relative', overflow: 'hidden',
-          padding: '18px 20px',
-          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          position: 'relative', background: '#111',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         }}>
-          {/* Diagonal shimmer */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'linear-gradient(115deg, transparent 25%, rgba(251,191,36,0.05) 50%, transparent 75%)',
-            pointerEvents: 'none',
-          }} />
-          {/* Glow bottom right */}
-          <div style={{
-            position: 'absolute', bottom: -30, right: -30,
-            width: 120, height: 120, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(251,191,36,0.1) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }} />
-
-          {/* Top row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            {/* Chip */}
+          {/* Real card image */}
+          {mockCard && !imgError ? (
+            <img
+              src={`https://cardimages.imaginecurve.com/cards/${mockCard.bin}.png`}
+              alt={product.name}
+              onError={() => setImgError(true)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : (
+            /* CSS fallback */
             <div style={{
-              width: 36, height: 28, borderRadius: 4,
-              background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 45%, #a07010 100%)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
-              position: 'relative', overflow: 'hidden',
+              width: '100%', height: '100%',
+              background: 'linear-gradient(145deg, #1c1c1e 0%, #111 55%, #0d0d0d 100%)',
+              padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              boxSizing: 'border-box',
             }}>
-              <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'rgba(0,0,0,0.2)' }} />
-              <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: 1, background: 'rgba(0,0,0,0.15)' }} />
-            </div>
-            <div style={{
-              fontFamily: '"Bebas Neue", "Impact", sans-serif',
-              fontSize: 18, letterSpacing: '0.06em',
-              color: 'rgba(251,191,36,0.8)',
-            }}>
-              {product.category?.name?.toUpperCase() ?? 'FULLZ'}
-            </div>
-          </div>
-
-          {/* Card number */}
-          <div style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 15, letterSpacing: '0.25em',
-            color: 'rgba(255,255,255,0.65)',
-            display: 'flex', gap: 12,
-          }}>
-            <span>••••</span><span>••••</span><span>••••</span>
-            <span style={{ color: 'rgba(255,255,255,0.9)' }}>{String(product.id).padStart(4, '0').slice(-4)}</span>
-          </div>
-
-          {/* Bottom row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-            <div>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 3 }}>
-                CARDHOLDER
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ width: 36, height: 28, borderRadius: 4, background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 45%, #a07010 100%)' }} />
+                <span style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 18, color: 'rgba(251,191,36,0.8)' }}>{product.category?.name ?? 'FULLZ'}</span>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.08em', fontFamily: '"JetBrains Mono", monospace', textTransform: 'uppercase' }}>
-                {product.name}
+              <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 14, letterSpacing: '0.25em', color: 'rgba(255,255,255,0.6)', display: 'flex', gap: 12 }}>
+                <span>••••</span><span>••••</span><span>••••</span><span style={{ color: 'rgba(255,255,255,0.9)' }}>{String(product.id).padStart(4,'0').slice(-4)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div>
+                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.15em', marginBottom: 3 }}>CARDHOLDER</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontFamily: '"JetBrains Mono", monospace', textTransform: 'uppercase' }}>{product.name}</div>
+                </div>
+                <div style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 28, color: '#fbbf24' }}>€{product.price.toFixed(2)}</div>
               </div>
             </div>
+          )}
+
+          {/* Price badge over real image */}
+          {mockCard && !imgError && (
             <div style={{
+              position: 'absolute', bottom: 12, right: 12,
+              background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
+              border: '1px solid rgba(251,191,36,0.4)',
+              borderRadius: 8, padding: '4px 10px',
               fontFamily: '"Bebas Neue", "Impact", sans-serif',
-              fontSize: 28, color: '#fbbf24', letterSpacing: '0.04em', lineHeight: 1,
+              fontSize: 20, color: '#fbbf24', letterSpacing: '0.04em',
             }}>
               €{product.price.toFixed(2)}
             </div>
-          </div>
+          )}
         </div>
       </div>
 

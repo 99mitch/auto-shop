@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Product } from 'floramini-types'
 
 interface Props {
@@ -5,172 +6,152 @@ interface Props {
   onClick: () => void
   onQuickAdd?: () => void
   dark?: boolean
+  bin?: string
 }
 
-function CardTile({ product, onClick, onQuickAdd }: Props) {
+function CardImageTile({ product, onClick, onQuickAdd, bin }: Props) {
+  const [imgError, setImgError] = useState(false)
   const isOut = product.stock === 0
   const isLow = product.stock > 0 && product.stock <= 3
+  const imgUrl = bin ? `https://cardimages.imaginecurve.com/cards/${bin}.png` : null
 
   return (
-    <button
-      onClick={onClick}
-      className="card-tile"
-      style={{
-        width: '100%',
-        aspectRatio: '1.586',
-        borderRadius: 14,
-        background: 'linear-gradient(145deg, #1c1c1e 0%, #111111 60%, #0d0d0d 100%)',
-        border: '1px solid rgba(251,191,36,0.2)',
-        position: 'relative',
-        overflow: 'hidden',
-        cursor: isOut ? 'not-allowed' : 'pointer',
-        padding: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        transition: 'border-color 0.2s, transform 0.15s',
-      }}
-    >
-      {/* Shimmer diagonal */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'linear-gradient(115deg, transparent 30%, rgba(251,191,36,0.04) 50%, transparent 70%)',
-      }} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {/* Card image */}
+      <button
+        onClick={onClick}
+        className="card-tile"
+        style={{
+          width: '100%', aspectRatio: '1.586',
+          borderRadius: 12,
+          border: '1px solid rgba(251,191,36,0.2)',
+          overflow: 'hidden', cursor: isOut ? 'default' : 'pointer',
+          padding: 0, position: 'relative',
+          background: '#111',
+          transition: 'transform 0.15s, border-color 0.2s',
+          display: 'block',
+        }}
+      >
+        {/* Real card image */}
+        {imgUrl && !imgError ? (
+          <img
+            src={imgUrl}
+            alt={product.name}
+            onError={() => setImgError(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          /* CSS fallback card */
+          <div style={{
+            width: '100%', height: '100%',
+            background: 'linear-gradient(145deg, #1c1c1e 0%, #111 60%, #0d0d0d 100%)',
+            display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+            padding: '10px 12px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{
+                width: 26, height: 20, borderRadius: 3,
+                background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 45%, #a07010 100%)',
+              }} />
+              <span style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 12, color: 'rgba(251,191,36,0.7)' }}>
+                {product.category?.name ?? 'CARD'}
+              </span>
+            </div>
+            <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.2em' }}>
+              •••• •••• •••• {String(product.id).padStart(4, '0').slice(-4)}
+            </div>
+          </div>
+        )}
 
-      {/* Out of stock overlay */}
-      {isOut && (
+        {/* Price badge */}
         <div style={{
-          position: 'absolute', inset: 0, zIndex: 10,
-          background: 'rgba(0,0,0,0.65)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <span style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 10, fontWeight: 700,
-            color: '#ef4444', letterSpacing: '0.15em',
-            border: '1px solid rgba(239,68,68,0.4)',
-            padding: '3px 8px', borderRadius: 4,
-          }}>ÉPUISÉ</span>
-        </div>
-      )}
-
-      {/* Top row: chip + network */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '10px 12px 0' }}>
-        {/* EMV Chip */}
-        <div style={{
-          width: 26, height: 20, borderRadius: 3,
-          background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 45%, #a07010 100%)',
-          position: 'relative', overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
-          flexShrink: 0,
-        }}>
-          <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'rgba(0,0,0,0.25)', transform: 'translateY(-50%)' }} />
-          <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: 1, background: 'rgba(0,0,0,0.2)', transform: 'translateX(-50%)' }} />
-        </div>
-
-        {/* Card network / category */}
-        <div style={{
+          position: 'absolute', bottom: 7, right: 7,
+          background: 'rgba(0,0,0,0.72)',
+          backdropFilter: 'blur(4px)',
+          border: '1px solid rgba(251,191,36,0.35)',
+          borderRadius: 6, padding: '2px 7px',
           fontFamily: '"Bebas Neue", "Impact", sans-serif',
-          fontSize: 13, letterSpacing: '0.06em',
-          color: 'rgba(251,191,36,0.75)',
+          fontSize: 14, color: '#fbbf24', letterSpacing: '0.04em',
+          lineHeight: 1.4,
+          pointerEvents: 'none',
         }}>
-          {product.category?.name?.toUpperCase() ?? 'CARD'}
+          €{product.price.toFixed(2)}
         </div>
-      </div>
 
-      {/* Card number row */}
-      <div style={{ padding: '0 12px' }}>
+        {/* Out of stock overlay */}
+        {isOut && (
+          <div style={{
+            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{
+              fontFamily: '"JetBrains Mono", monospace', fontSize: 9, fontWeight: 700,
+              color: '#ef4444', border: '1px solid rgba(239,68,68,0.5)',
+              padding: '2px 7px', borderRadius: 4, letterSpacing: '0.15em',
+            }}>ÉPUISÉ</span>
+          </div>
+        )}
+
+        {/* Low stock badge */}
+        {isLow && (
+          <div style={{
+            position: 'absolute', top: 6, left: 6,
+            background: 'rgba(0,0,0,0.7)',
+            border: '1px solid rgba(245,158,11,0.5)',
+            borderRadius: 5, padding: '2px 6px',
+            fontFamily: '"JetBrains Mono", monospace', fontSize: 8, fontWeight: 700,
+            color: '#f59e0b', letterSpacing: '0.1em',
+          }}>
+            ⚠ {product.stock}
+          </div>
+        )}
+      </button>
+
+      {/* Info bar below the card */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '7px 2px 2px',
+      }}>
         <div style={{
           fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 11, letterSpacing: '0.22em',
-          color: 'rgba(255,255,255,0.55)',
-          display: 'flex', gap: 8, alignItems: 'center',
+          fontSize: 10, color: 'rgba(255,255,255,0.55)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          maxWidth: '80%',
         }}>
-          <span>••••</span><span>••••</span><span>••••</span>
-          <span style={{ color: 'rgba(255,255,255,0.85)' }}>
-            {String(product.id).padStart(4, '0').slice(-4)}
-          </span>
+          {product.name}
         </div>
-      </div>
-
-      {/* Bottom row */}
-      <div style={{
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-        padding: '0 12px 10px',
-      }}>
-        {/* Name + low stock */}
-        <div>
-          <div style={{
-            fontSize: 8, fontWeight: 700, letterSpacing: '0.15em',
-            color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase',
-            fontFamily: '"JetBrains Mono", monospace',
-            marginBottom: 2,
-          }}>CARDHOLDER</div>
-          <div style={{
-            fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.8)',
-            letterSpacing: '0.05em', textTransform: 'uppercase',
-            fontFamily: '"JetBrains Mono", monospace',
-            maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {product.name}
-          </div>
-          {isLow && (
-            <div style={{ fontSize: 8, color: '#f59e0b', letterSpacing: '0.1em', marginTop: 2, fontFamily: '"JetBrains Mono", monospace' }}>
-              ⚠ {product.stock} LEFT
-            </div>
-          )}
-        </div>
-
-        {/* Price + add button */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          <div style={{
-            fontFamily: '"Bebas Neue", "Impact", sans-serif',
-            fontSize: 18, letterSpacing: '0.04em',
-            color: '#fbbf24',
-            lineHeight: 1,
-          }}>
-            €{product.price.toFixed(2)}
-          </div>
-          {product.stock > 0 && onQuickAdd && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onQuickAdd() }}
-              aria-label={`Ajouter ${product.name}`}
-              style={{
-                width: 22, height: 22,
-                borderRadius: 5,
-                background: 'rgba(251,191,36,0.15)',
-                border: '1px solid rgba(251,191,36,0.35)',
-                color: '#fbbf24',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', fontSize: 14, lineHeight: 1,
-                transition: 'background 0.15s',
-              }}
-            >
-              +
-            </button>
-          )}
-        </div>
+        {product.stock > 0 && onQuickAdd && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onQuickAdd() }}
+            aria-label={`Ajouter ${product.name}`}
+            style={{
+              width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+              background: 'rgba(251,191,36,0.12)',
+              border: '1px solid rgba(251,191,36,0.3)',
+              color: '#fbbf24', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, lineHeight: 1,
+              transition: 'background 0.15s',
+            }}
+          >+</button>
+        )}
       </div>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');
         .card-tile:active { transform: scale(0.97) !important; }
         @media (hover: hover) {
-          .card-tile:hover:not(:disabled) { border-color: rgba(251,191,36,0.45) !important; }
+          .card-tile:hover { border-color: rgba(251,191,36,0.5) !important; transform: translateY(-1px); }
         }
       `}</style>
-    </button>
+    </div>
   )
 }
 
 function DefaultCard({ product, onClick, onQuickAdd }: Props) {
   return (
-    <div
-      className="flex flex-col rounded-xl overflow-hidden border active:scale-[0.98] transition-transform"
-      style={{
-        borderColor: 'var(--tg-theme-hint-color, #e2e8f0)',
-        backgroundColor: 'var(--tg-theme-bg-color, #fff)',
-      }}
+    <div className="flex flex-col rounded-xl overflow-hidden border active:scale-[0.98] transition-transform"
+      style={{ borderColor: 'var(--tg-theme-hint-color, #e2e8f0)', backgroundColor: 'var(--tg-theme-bg-color, #fff)' }}
     >
       <button onClick={onClick} className="flex-1 text-left">
         <div className="relative">
@@ -187,27 +168,18 @@ function DefaultCard({ product, onClick, onQuickAdd }: Props) {
           )}
         </div>
         <div className="px-3 pt-2.5 pb-1">
-          <p className="text-xs font-semibold leading-tight line-clamp-2 mb-0.5" style={{ color: 'var(--tg-theme-text-color, #0f172a)' }}>
-            {product.name}
-          </p>
-          {product.category && (
-            <p className="text-[10px]" style={{ color: 'var(--tg-theme-hint-color, #64748b)' }}>{product.category.name}</p>
-          )}
+          <p className="text-xs font-semibold leading-tight line-clamp-2 mb-0.5" style={{ color: 'var(--tg-theme-text-color, #0f172a)' }}>{product.name}</p>
+          {product.category && <p className="text-[10px]" style={{ color: 'var(--tg-theme-hint-color, #64748b)' }}>{product.category.name}</p>}
         </div>
       </button>
       <div className="flex items-center justify-between px-3 pb-3">
-        <span className="text-sm font-bold" style={{ color: 'var(--tg-theme-text-color, #0f172a)' }}>
-          €{product.price.toFixed(2)}
-        </span>
+        <span className="text-sm font-bold" style={{ color: 'var(--tg-theme-text-color, #0f172a)' }}>€{product.price.toFixed(2)}</span>
         {product.stock > 0 && onQuickAdd && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onQuickAdd() }}
-            className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors active:scale-95"
+          <button onClick={(e) => { e.stopPropagation(); onQuickAdd() }}
+            className="flex h-7 w-7 items-center justify-center rounded-lg active:scale-95"
             style={{ backgroundColor: 'var(--tg-theme-button-color, #0f172a)', color: 'var(--tg-theme-button-text-color, #fff)' }}
             aria-label={`Ajouter ${product.name} au panier`}
-          >
-            +
-          </button>
+          >+</button>
         )}
       </div>
     </div>
@@ -215,5 +187,6 @@ function DefaultCard({ product, onClick, onQuickAdd }: Props) {
 }
 
 export default function ProductCard(props: Props) {
-  return props.dark ? <CardTile {...props} /> : <DefaultCard {...props} />
+  if (props.dark) return <CardImageTile {...props} />
+  return <DefaultCard {...props} />
 }

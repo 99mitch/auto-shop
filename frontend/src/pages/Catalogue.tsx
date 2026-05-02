@@ -5,7 +5,6 @@ import WebApp from '@twa-dev/sdk'
 import { api } from '../lib/api'
 import type { Product, Category } from 'floramini-types'
 import { useCartStore } from '../stores/cart'
-import LoadingSkeleton from '../components/LoadingSkeleton'
 import ProductCard from '../components/ProductCard'
 import AddedToCartSheet from '../components/AddedToCartSheet'
 import CartIcon from '../components/CartIcon'
@@ -13,30 +12,63 @@ import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 
 const ALL_SLUG = 'all'
 
+const CARD_IMG = (bin: string) => `https://cardimages.imaginecurve.com/cards/${bin}.png`
+
+type MockCard = Omit<Product, 'categoryId' | 'isActive'> & { bin: string; categoryId?: number; isActive?: boolean }
+
+const mc = (id: number, bin: string, name: string, price: number, stock: number, catId: number, catName: string, catSlug: string, desc: string): MockCard => ({
+  id, bin, name, price, stock, imageUrl: CARD_IMG(bin), images: [], description: desc,
+  categoryId: catId, isActive: true,
+  category: { id: catId, name: catName, slug: catSlug, order: catId },
+})
+
+const MOCK_CARDS: MockCard[] = [
+  mc(1,  '414720', 'Visa Classic FR',    12,  8,  1, 'Visa',       'visa', 'Visa Classic France. Balance vérifiée. Livraison immédiate.'),
+  mc(2,  '414709', 'Visa Gold UK',       22,  5,  1, 'Visa',       'visa', 'Visa Gold United Kingdom. CVV inclus.'),
+  mc(3,  '422150', 'Visa Platinum DE',   35,  3,  1, 'Visa',       'visa', 'Visa Platinum Allemagne. Haut plafond.'),
+  mc(4,  '424631', 'Visa Business US',   55,  6,  1, 'Visa',       'visa', 'Visa Business USA. Solde élevé garanti.'),
+  mc(5,  '431940', 'Visa Infinite BE',   75,  2,  1, 'Visa',       'visa', 'Visa Infinite Belgique. Limite premium.'),
+  mc(6,  '438857', 'Visa Signature ES',  40,  9,  1, 'Visa',       'visa', 'Visa Signature Espagne. Frais zéro.'),
+  mc(7,  '450875', 'Visa Debit NL',      9,   15, 1, 'Visa',       'visa', 'Visa Debit Pays-Bas. Format fullz disponible.'),
+  mc(8,  '453641', 'Visa Electron IT',   11,  7,  1, 'Visa',       'visa', 'Visa Electron Italie. Testé & valide.'),
+  mc(9,  '465901', 'Visa Prepaid CH',    18,  0,  1, 'Visa',       'visa', 'Visa Prépayé Suisse. Rechargeable.'),
+  mc(10, '522166', 'MC Standard FR',     14,  10, 2, 'Mastercard', 'mc',   'Mastercard Standard France. CVV + expiry inclus.'),
+  mc(11, '529204', 'MC Gold UK',         28,  4,  2, 'Mastercard', 'mc',   'Mastercard Gold UK. Limite 5000£.'),
+  mc(12, '540010', 'MC Platinum DE',     42,  1,  2, 'Mastercard', 'mc',   'Mastercard Platinum Allemagne. Très haut de gamme.'),
+]
+
+const CARD_CATEGORIES: Category[] = [
+  { id: 1, name: 'Visa',       slug: 'visa', order: 1 },
+  { id: 2, name: 'Mastercard', slug: 'mc',   order: 2 },
+]
+
 export default function Catalogue() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const type = searchParams.get('type') ?? 'cards'
   const addItem = useCartStore((s) => s.addItem)
-  const [activeCategory, setActiveCategory] = useState(searchParams.get('category') ?? ALL_SLUG)
+  const [activeCategory, setActiveCategory] = useState(ALL_SLUG)
   const [search, setSearch] = useState('')
   const [addedProduct, setAddedProduct] = useState<Product | null>(null)
 
   useTelegramBackButton(() => navigate('/'))
 
-  const accent = type === 'digital'
-    ? { main: 'rgba(34,211,238,1)', dim: 'rgba(34,211,238,0.6)', faint: 'rgba(34,211,238,0.12)', border: 'rgba(34,211,238,0.2)' }
-    : { main: 'rgba(251,191,36,1)',  dim: 'rgba(251,191,36,0.6)',  faint: 'rgba(251,191,36,0.12)',  border: 'rgba(251,191,36,0.2)'  }
+  const isCards = type === 'cards'
+  const accent = isCards
+    ? { main: 'rgba(251,191,36,1)', dim: 'rgba(251,191,36,0.6)', faint: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.2)' }
+    : { main: 'rgba(34,211,238,1)',  dim: 'rgba(34,211,238,0.6)',  faint: 'rgba(34,211,238,0.1)',  border: 'rgba(34,211,238,0.2)'  }
 
-  const label = type === 'digital' ? 'DONNÉES DIGITALES' : 'VENTE DE CARTES'
+  const label = isCards ? 'VENTE DE CARTES' : 'DONNÉES DIGITALES'
 
-  const { data: categories = [] } = useQuery<Category[]>({
+  // --- Cards: use mock data ---
+  const { data: apiCategories = [], isLoading: catLoading } = useQuery<Category[]>({
     queryKey: ['categories'],
     queryFn: () => api.get('/api/categories').then((r) => r.data),
     staleTime: 5 * 60 * 1000,
+    enabled: !isCards,
   })
 
-  const { data: products = [], isLoading } = useQuery<Product[]>({
+  const { data: apiProducts = [], isLoading: prodLoading } = useQuery<Product[]>({
     queryKey: ['products', activeCategory, search],
     queryFn: () => {
       const params = new URLSearchParams()
@@ -45,6 +77,19 @@ export default function Catalogue() {
       return api.get(`/api/products?${params}`).then((r) => r.data)
     },
     staleTime: 5 * 60 * 1000,
+    enabled: !isCards,
+  })
+
+  const categories = isCards ? CARD_CATEGORIES : apiCategories
+  const isLoading  = isCards ? false : (catLoading || prodLoading)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allProducts: (Product & { bin?: string })[] = isCards ? (MOCK_CARDS as any) : apiProducts
+
+  const products = allProducts.filter((p) => {
+    const matchCat  = activeCategory === ALL_SLUG || p.category?.slug === activeCategory
+    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase())
+    return matchCat && matchSearch
   })
 
   const handleQuickAdd = useCallback((product: Product) => {
@@ -71,57 +116,44 @@ export default function Catalogue() {
         padding: '12px 16px',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
-        {/* Back */}
         <button
           onClick={() => navigate('/')}
           style={{
             width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-            border: `1px solid ${accent.border}`,
-            background: accent.faint,
+            border: `1px solid ${accent.border}`, background: accent.faint,
             color: accent.main, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 16, transition: 'background 0.15s',
+            fontSize: 16,
           }}
           aria-label="Retour"
-        >
-          ←
-        </button>
+        >←</button>
 
-        {/* Title */}
         <div style={{ flex: 1 }}>
           <div style={{
             fontFamily: '"Bebas Neue", "Impact", sans-serif',
-            fontSize: 18, letterSpacing: '0.08em',
-            color: '#ffffff', lineHeight: 1,
+            fontSize: 18, letterSpacing: '0.08em', color: '#fff', lineHeight: 1,
           }}>
             {label}
           </div>
-          {products.length > 0 && !isLoading && (
-            <div style={{
-              fontSize: 10, fontFamily: '"JetBrains Mono", monospace',
-              color: accent.dim, marginTop: 2,
-              letterSpacing: '0.1em',
-            }}>
-              {products.length} article{products.length > 1 ? 's' : ''}
+          {!isLoading && (
+            <div style={{ fontSize: 10, fontFamily: '"JetBrains Mono", monospace', color: accent.dim, marginTop: 2, letterSpacing: '0.1em' }}>
+              {products.length} article{products.length !== 1 ? 's' : ''}
             </div>
           )}
         </div>
 
-        {/* Cart */}
         <CartIcon dark />
       </div>
 
       <div style={{ padding: '16px 16px 0' }}>
-
         {/* Search */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: 'rgba(255,255,255,0.04)',
           border: `1px solid ${accent.border}`,
-          borderRadius: 12, padding: '10px 14px',
-          marginBottom: 14,
+          borderRadius: 12, padding: '10px 14px', marginBottom: 14,
         }}>
-          <span style={{ color: accent.dim, fontSize: 12, fontFamily: '"JetBrains Mono", monospace', flexShrink: 0 }}>⌕</span>
+          <span style={{ color: accent.dim, fontSize: 13, flexShrink: 0 }}>⌕</span>
           <input
             type="text"
             placeholder="Rechercher..."
@@ -129,49 +161,39 @@ export default function Catalogue() {
             onChange={(e) => setSearch(e.target.value)}
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              fontSize: 13, color: '#ffffff',
+              fontSize: 13, color: '#fff',
               fontFamily: '"JetBrains Mono", monospace',
               caretColor: accent.main,
             }}
           />
           {search && (
-            <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: accent.dim, cursor: 'pointer', fontSize: 14, padding: 0 }}>
-              ×
-            </button>
+            <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: accent.dim, cursor: 'pointer', fontSize: 16, padding: 0, lineHeight: 1 }}>×</button>
           )}
         </div>
 
         {/* Category pills */}
-        {categories.length > 0 && (
-          <div
-            className="scrollbar-hide"
-            style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 14 }}
-          >
-            {[{ slug: ALL_SLUG, name: 'Tous' }, ...categories].map((cat) => {
-              const active = activeCategory === cat.slug
-              return (
-                <button
-                  key={cat.slug}
-                  onClick={() => setActiveCategory(cat.slug)}
-                  style={{
-                    flexShrink: 0, borderRadius: 8,
-                    padding: '6px 12px',
-                    fontSize: 11, fontWeight: 700,
-                    fontFamily: '"JetBrains Mono", monospace',
-                    letterSpacing: '0.08em',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    background: active ? accent.faint : 'transparent',
-                    border: `1px solid ${active ? accent.main : 'rgba(255,255,255,0.1)'}`,
-                    color: active ? accent.main : 'rgba(255,255,255,0.4)',
-                  }}
-                >
-                  {cat.name.toUpperCase()}
-                </button>
-              )
-            })}
-          </div>
-        )}
+        <div className="scrollbar-hide" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 14 }}>
+          {[{ id: 0, slug: ALL_SLUG, name: 'Tous' }, ...categories].map((cat) => {
+            const active = activeCategory === cat.slug
+            return (
+              <button
+                key={cat.slug}
+                onClick={() => setActiveCategory(cat.slug)}
+                style={{
+                  flexShrink: 0, borderRadius: 8, padding: '6px 12px',
+                  fontSize: 11, fontWeight: 700,
+                  fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.08em',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                  background: active ? accent.faint : 'transparent',
+                  border: `1px solid ${active ? accent.main : 'rgba(255,255,255,0.1)'}`,
+                  color: active ? accent.main : 'rgba(255,255,255,0.4)',
+                }}
+              >
+                {cat.name.toUpperCase()}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Grid */}
@@ -179,24 +201,18 @@ export default function Catalogue() {
         {isLoading ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  width: '100%', aspectRatio: '1.586',
-                  borderRadius: 14,
-                  background: 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${accent.border}`,
-                  animation: 'shimmer 1.5s ease-in-out infinite',
-                }}
-              />
+              <div key={i} style={{
+                width: '100%', aspectRatio: '1.586', borderRadius: 14,
+                background: 'rgba(255,255,255,0.04)',
+                border: `1px solid ${accent.border}`,
+                animation: 'shimmer 1.5s ease-in-out infinite',
+              }} />
             ))}
           </div>
         ) : products.length === 0 ? (
           <div style={{ paddingTop: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
             <div style={{ fontSize: 32, opacity: 0.3 }}>▣</div>
-            <p style={{ fontSize: 12, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>
-              AUCUN RÉSULTAT
-            </p>
+            <p style={{ fontSize: 12, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>AUCUN RÉSULTAT</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -204,6 +220,7 @@ export default function Catalogue() {
               <ProductCard
                 key={product.id}
                 product={product}
+                bin={(product as Product & { bin?: string }).bin}
                 dark
                 onClick={() => navigate(`/product/${product.id}`)}
                 onQuickAdd={() => handleQuickAdd(product)}
@@ -224,10 +241,7 @@ export default function Catalogue() {
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');
-        @keyframes shimmer {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.7; }
-        }
+        @keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.7; } }
         input::placeholder { color: rgba(255,255,255,0.2); }
       `}</style>
     </div>
