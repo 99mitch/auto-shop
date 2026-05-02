@@ -201,26 +201,28 @@ export default function Checkout() {
 
         {/* Format */}
         <Section label="FORMAT DU FICHIER">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 10 }}>
-            {FORMATS.map((f) => (
-              <button key={f.value} onClick={() => setFormat(f.value)} style={{
-                borderRadius: 10, padding: '9px 12px', cursor: 'pointer', textAlign: 'left',
-                background: format === f.value ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${format === f.value ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.07)'}`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                  <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 700, color: format === f.value ? '#fbbf24' : 'rgba(255,255,255,0.65)', letterSpacing: '0.08em' }}>{f.label}</span>
-                  {format === f.value && <span style={{ fontSize: 7, color: '#fbbf24' }}>●</span>}
-                </div>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', fontFamily: '"JetBrains Mono", monospace' }}>{f.desc}</div>
-              </button>
-            ))}
-          </div>
-          <div style={{ borderRadius: 8, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)', padding: '9px 11px' }}>
-            <div style={{ fontSize: 7, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.18)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 5 }}>APERÇU</div>
-            <pre style={{ margin: 0, fontSize: 9, color: 'rgba(251,191,36,0.5)', fontFamily: '"JetBrains Mono", monospace', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-              {items[0] ? (() => { const p = genCardPayload(items[0].productId, format); return p.slice(0, 160) + (p.length > 160 ? '…' : '') })() : ''}
-            </pre>
+          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 10 }}>
+              {FORMATS.map((f) => (
+                <button key={f.value} onClick={() => setFormat(f.value)} style={{
+                  borderRadius: 10, padding: '9px 12px', cursor: 'pointer', textAlign: 'left',
+                  background: format === f.value ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${format === f.value ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.07)'}`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 700, color: format === f.value ? '#fbbf24' : 'rgba(255,255,255,0.65)', letterSpacing: '0.08em' }}>{f.label}</span>
+                    {format === f.value && <span style={{ fontSize: 7, color: '#fbbf24' }}>●</span>}
+                  </div>
+                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', fontFamily: '"JetBrains Mono", monospace' }}>{f.desc}</div>
+                </button>
+              ))}
+            </div>
+            <div style={{ borderRadius: 8, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)', padding: '9px 11px' }}>
+              <div style={{ fontSize: 7, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.18)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 5 }}>APERÇU</div>
+              <pre style={{ margin: 0, fontSize: 9, color: 'rgba(251,191,36,0.5)', fontFamily: '"JetBrains Mono", monospace', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                {items[0] ? (() => { const p = genCardPayload(items[0].productId, format); return p.slice(0, 160) + (p.length > 160 ? '…' : '') })() : ''}
+              </pre>
+            </div>
           </div>
         </Section>
 
