@@ -30,7 +30,7 @@ export default function Layout() {
               className="text-base font-bold tracking-tight"
               style={{ color: 'var(--tg-theme-text-color, #0f172a)' }}
             >
-              FloraMini
+              Fullz
             </h1>
           </div>
           <CartIcon />

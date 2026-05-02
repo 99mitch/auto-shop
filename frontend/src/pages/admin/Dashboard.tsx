@@ -18,7 +18,7 @@ export default function Dashboard() {
     <div className="p-4">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold" style={{ color: 'var(--tg-theme-text-color)' }}>
-          🌸 Admin FloraMini
+          Admin Fullz
         </h1>
       </div>
 
