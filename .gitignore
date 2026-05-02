@@ -12,3 +12,4 @@ packages/types/dist/
 .vercel/
 .worktrees/
 .superpowers/
+.vercel
