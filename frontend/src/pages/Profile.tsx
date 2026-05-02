@@ -6,12 +6,14 @@ import { api } from '../lib/api'
 import type { Address, Favorite } from 'floramini-types'
 import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 import LoadingSkeleton from '../components/LoadingSkeleton'
+import { useAuthStore } from '../stores/auth'
 
 export default function Profile() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   useTelegramBackButton(useCallback(() => navigate('/'), [navigate]))
 
+  const { isAdmin, isCollab } = useAuthStore()
   const tgUser = WebApp.initDataUnsafe?.user
   const [showAddForm, setShowAddForm] = useState(false)
   const [newAddr, setNewAddr] = useState({ label: 'Domicile', street: '', city: '', zip: '' })
@@ -85,6 +87,32 @@ export default function Profile() {
         </span>
         <span style={{ color: 'var(--tg-theme-hint-color, #9ca3af)' }}>›</span>
       </button>
+
+      {isAdmin && (
+        <button
+          onClick={() => navigate('/admin')}
+          className="w-full flex items-center justify-between rounded-2xl p-4"
+          style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)' }}
+        >
+          <span className="text-sm font-semibold" style={{ color: '#fbbf24', fontFamily: '"JetBrains Mono", monospace' }}>
+            ⚙ Panel Admin
+          </span>
+          <span style={{ color: '#fbbf24' }}>›</span>
+        </button>
+      )}
+
+      {(isCollab || isAdmin) && (
+        <button
+          onClick={() => navigate('/collab')}
+          className="w-full flex items-center justify-between rounded-2xl p-4"
+          style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)' }}
+        >
+          <span className="text-sm font-semibold" style={{ color: '#4ade80', fontFamily: '"JetBrains Mono", monospace' }}>
+            ◈ Mon espace collab
+          </span>
+          <span style={{ color: '#4ade80' }}>›</span>
+        </button>
+      )}
 
       {/* Addresses */}
       <div
