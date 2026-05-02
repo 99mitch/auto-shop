@@ -118,7 +118,7 @@ function MockConfirmation({ state }: { state: MockOrderState }) {
                 Envoyé dans ce chat
               </div>
               <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace', marginTop: 2 }}>
-                Format {state.format} · {state.deliveries.length} fichier{state.deliveries.length > 1 ? 's' : ''}
+                Format {state.format} · {state.deliveries.length} {state.format === 'MESSAGE' ? `message${state.deliveries.length > 1 ? 's' : ''}` : `fichier${state.deliveries.length > 1 ? 's' : ''}`}
               </div>
             </div>
             <div style={{ marginLeft: 'auto', fontSize: 9, color: '#4ade80', fontFamily: '"JetBrains Mono", monospace', fontWeight: 700 }}>LIVRÉ</div>

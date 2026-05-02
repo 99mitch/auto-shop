@@ -228,7 +228,9 @@ export default function Checkout() {
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.06em', marginBottom: 2 }}>LIVRAISON DANS CE CHAT</div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace' }}>
-              Le fichier {format} sera envoyé dans votre conversation avec le bot
+              {format === 'MESSAGE'
+                ? 'Données envoyées par message direct dans ce chat'
+                : `Fichier ${format} envoyé dans votre conversation avec le bot`}
             </div>
           </div>
         </div>
@@ -248,7 +250,7 @@ export default function Checkout() {
         }}>
           <div>
             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 2 }}>TOTAL</div>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono", monospace' }}>fichier inclus dans la commande</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono", monospace' }}>{format === 'MESSAGE' ? 'message direct inclus' : 'fichier inclus dans la commande'}</div>
           </div>
           <span style={{ fontFamily: '"Bebas Neue", "Impact", sans-serif', fontSize: 26, color: '#fbbf24', letterSpacing: '0.04em', lineHeight: 1 }}>
             €{total.toFixed(2)}
