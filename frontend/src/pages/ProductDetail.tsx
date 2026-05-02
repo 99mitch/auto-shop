@@ -10,28 +10,21 @@ import AddedToCartSheet from '../components/AddedToCartSheet'
 import CartIcon from '../components/CartIcon'
 import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 
-const CARD_IMG = (bin: string) => `https://cardimages.imaginecurve.com/cards/${bin}.png`
-type MockCard = Omit<Product, 'categoryId' | 'isActive'> & { bin: string; categoryId?: number; isActive?: boolean }
-
-const mk = (id: number, bin: string, name: string, price: number, stock: number, catId: number, catName: string, catSlug: string, desc: string): MockCard => ({
-  id, bin, name, price, stock, imageUrl: CARD_IMG(bin), images: [], description: desc,
-  categoryId: catId, isActive: true,
-  category: { id: catId, name: catName, slug: catSlug, order: catId },
-})
+import type { MockCard } from './Catalogue'
 
 const MOCK_CARDS: MockCard[] = [
-  mk(1,  '497203', 'Crédit Mutuel Visa Classic',      18, 8,  1, 'Visa',       'visa', 'Crédit Mutuel — Visa Classic. Balance vérifiée, CVV inclus. Livraison immédiate.'),
-  mk(2,  '497207', 'Crédit Mutuel Visa Gold',         30, 3,  1, 'Visa',       'visa', 'Crédit Mutuel — Visa Gold. Plafond élevé. CVV + date inclus.'),
-  mk(3,  '497208', 'CIC Visa Premier',                45, 5,  1, 'Visa',       'visa', 'CIC — Visa Premier. Haut de gamme. Fullz disponible sur demande.'),
-  mk(4,  '497490', 'Crédit Agricole Visa Classic',    15, 12, 1, 'Visa',       'visa', 'Crédit Agricole — Visa Classic. Testé & valide. CVV inclus.'),
-  mk(5,  '497492', 'Crédit Agricole Visa Premier',    38, 2,  1, 'Visa',       'visa', 'Crédit Agricole — Visa Premier. Limite premium. Stock limité.'),
-  mk(6,  '497410', 'LCL Visa Classic',                20, 9,  1, 'Visa',       'visa', 'LCL — Visa Classic. Balance vérifiée. Livraison en moins de 24h.'),
-  mk(7,  '497413', 'LCL Visa Premier',                42, 6,  1, 'Visa',       'visa', 'LCL — Visa Premier. Haut plafond. CVV + expiry fournis.'),
-  mk(8,  '497974', 'BNP Paribas Visa Premier',        55, 4,  1, 'Visa',       'visa', 'BNP Paribas — Visa Premier. Compte vérifié, solde garanti.'),
-  mk(9,  '498208', 'Société Générale Visa Premier',   48, 7,  1, 'Visa',       'visa', 'Société Générale — Visa Premier. Validité longue durée. Fullz dispo.'),
-  mk(10, '534543', 'BNP Paribas Mastercard Gold',     50, 3,  2, 'Mastercard', 'mc',   'BNP Paribas — Mastercard Gold. Solde élevé. CVV inclus.'),
-  mk(11, '529941', 'Société Générale Mastercard',     35, 8,  2, 'Mastercard', 'mc',   'Société Générale — Mastercard Standard. Balance testée. Livraison immédiate.'),
-  mk(12, '497110', 'La Banque Postale Visa',          12, 0,  1, 'Visa',       'visa', 'La Banque Postale — Visa Classic. Rupture temporaire. Réapprovisionnement sous 48h.'),
+  { id: 1,  bin: '497203', name: 'Crédit Mutuel Visa Classic',    price: 18, stock: 8,  imageUrl: '', images: [], description: 'Crédit Mutuel — Visa Classic. Balance vérifiée, CVV inclus.',  categoryId: 1, isActive: true, niveau: 'CLASSIC', age: 34, cp: '75012', tags: ['VISA','DEBIT',"AUJOURD'HUI"],                  banque: 'CRÉDIT MUTUEL',    category: { id:1, name:'Visa',       slug:'visa', order:1 } },
+  { id: 2,  bin: '497207', name: 'Crédit Mutuel Visa Gold',       price: 30, stock: 3,  imageUrl: '', images: [], description: 'Crédit Mutuel — Visa Gold. Plafond élevé. CVV + date inclus.', categoryId: 1, isActive: true, niveau: 'GOLD',    age: 48, cp: '69001', tags: ['VISA','CREDIT','AMELI','ANDROID','J-1'],        banque: 'CRÉDIT MUTUEL',    category: { id:1, name:'Visa',       slug:'visa', order:1 } },
+  { id: 3,  bin: '497208', name: 'CIC Visa Premier',              price: 45, stock: 5,  imageUrl: '', images: [], description: 'CIC — Visa Premier. Fullz disponible sur demande.',            categoryId: 1, isActive: true, niveau: 'PREMIER', age: 52, cp: '33000', tags: ['VISA','CREDIT','AMELI','IPHONE',"AUJOURD'HUI"],  banque: 'CIC',              category: { id:1, name:'Visa',       slug:'visa', order:1 } },
+  { id: 4,  bin: '497490', name: 'Crédit Agricole Visa Classic',  price: 15, stock: 12, imageUrl: '', images: [], description: 'Crédit Agricole — Visa Classic. Testé & valide.',             categoryId: 1, isActive: true, niveau: 'CLASSIC', age: 27, cp: '13001', tags: ['VISA','DEBIT','ANDROID',"AUJOURD'HUI"],          banque: 'CRÉDIT AGRICOLE',  category: { id:1, name:'Visa',       slug:'visa', order:1 } },
+  { id: 5,  bin: '497492', name: 'Crédit Agricole Visa Premier',  price: 38, stock: 2,  imageUrl: '', images: [], description: 'Crédit Agricole — Visa Premier. Stock limité.',               categoryId: 1, isActive: true, niveau: 'PREMIER', age: 61, cp: '59000', tags: ['VISA','CREDIT','AMELI','IPHONE','J-1'],          banque: 'CRÉDIT AGRICOLE',  category: { id:1, name:'Visa',       slug:'visa', order:1 } },
+  { id: 6,  bin: '497410', name: 'LCL Visa Classic',              price: 20, stock: 9,  imageUrl: '', images: [], description: 'LCL — Visa Classic. Livraison en moins de 24h.',              categoryId: 1, isActive: true, niveau: 'CLASSIC', age: 38, cp: '44000', tags: ['VISA','DEBIT',"AUJOURD'HUI"],                  banque: 'LCL',              category: { id:1, name:'Visa',       slug:'visa', order:1 } },
+  { id: 7,  bin: '497413', name: 'LCL Visa Premier',              price: 42, stock: 6,  imageUrl: '', images: [], description: 'LCL — Visa Premier. Haut plafond. CVV + expiry fournis.',     categoryId: 1, isActive: true, niveau: 'PREMIER', age: 47, cp: '31000', tags: ['VISA','CREDIT','AMELI','ANDROID',"AUJOURD'HUI"], banque: 'LCL',              category: { id:1, name:'Visa',       slug:'visa', order:1 } },
+  { id: 8,  bin: '497974', name: 'BNP Paribas Visa Premier',      price: 55, stock: 4,  imageUrl: '', images: [], description: 'BNP Paribas — Visa Premier. Compte vérifié, solde garanti.',  categoryId: 1, isActive: true, niveau: 'PREMIER', age: 55, cp: '75008', tags: ['VISA','CREDIT','AMELI','IPHONE','J-1'],          banque: 'BNP PARIBAS',      category: { id:1, name:'Visa',       slug:'visa', order:1 } },
+  { id: 9,  bin: '498208', name: 'Société Générale Visa Premier', price: 48, stock: 7,  imageUrl: '', images: [], description: 'Société Générale — Visa Premier. Fullz dispo.',               categoryId: 1, isActive: true, niveau: 'PREMIER', age: 43, cp: '92100', tags: ['VISA','CREDIT','ANDROID',"AUJOURD'HUI"],        banque: 'SOCIÉTÉ GÉNÉRALE', category: { id:1, name:'Visa',       slug:'visa', order:1 } },
+  { id: 10, bin: '534543', name: 'BNP Paribas Mastercard Gold',   price: 50, stock: 3,  imageUrl: '', images: [], description: 'BNP Paribas — Mastercard Gold. Solde élevé.',                 categoryId: 2, isActive: true, niveau: 'GOLD',    age: 39, cp: '06000', tags: ['MASTERCARD','CREDIT','AMELI','IPHONE','J-1'],    banque: 'BNP PARIBAS',      category: { id:2, name:'Mastercard', slug:'mc',   order:2 } },
+  { id: 11, bin: '529941', name: 'Société Générale Mastercard',   price: 35, stock: 8,  imageUrl: '', images: [], description: 'SG — Mastercard Standard. Balance testée.',                   categoryId: 2, isActive: true, niveau: 'CLASSIC', age: 24, cp: '67000', tags: ['MASTERCARD','DEBIT','ANDROID',"AUJOURD'HUI"],    banque: 'SOCIÉTÉ GÉNÉRALE', category: { id:2, name:'Mastercard', slug:'mc',   order:2 } },
+  { id: 12, bin: '497110', name: 'La Banque Postale Visa',        price: 12, stock: 0,  imageUrl: '', images: [], description: 'La Banque Postale — Visa Classic. Réappro sous 48h.',         categoryId: 1, isActive: true, niveau: 'CLASSIC', age: 23, cp: '16000', tags: ['VISA','DEBIT',"AUJOURD'HUI"],                  banque: 'LA BANQUE POSTALE',category: { id:1, name:'Visa',       slug:'visa', order:1 } },
 ]
 
 export default function ProductDetail() {
