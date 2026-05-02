@@ -8,7 +8,7 @@ import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 import type { Order } from 'floramini-types'
 import { MOCK_CARDS } from './Catalogue'
 
-export type Format = 'TXT' | 'JSON' | 'CSV' | 'BASE64'
+export type Format = 'TXT' | 'JSON' | 'CSV' | 'MESSAGE'
 
 export interface DeliveryItem {
   productName: string
@@ -24,10 +24,10 @@ export interface MockOrderState {
 }
 
 const FORMATS: { value: Format; label: string; desc: string }[] = [
-  { value: 'TXT',    label: 'TXT',  desc: 'Une ligne par champ' },
-  { value: 'JSON',   label: 'JSON', desc: 'Objet structuré' },
-  { value: 'CSV',    label: 'CSV',  desc: 'Compatible Excel' },
-  { value: 'BASE64', label: 'B64',  desc: 'Encodé sécurisé' },
+  { value: 'MESSAGE', label: 'MSG',  desc: 'Message Telegram' },
+  { value: 'TXT',     label: 'TXT',  desc: 'Fichier texte' },
+  { value: 'JSON',    label: 'JSON', desc: 'Fichier structuré' },
+  { value: 'CSV',     label: 'CSV',  desc: 'Fichier Excel' },
 ]
 
 const FIRST_NAMES = ['Jean', 'Marie', 'Pierre', 'Sophie', 'François', 'Claire', 'Michel', 'Isabelle', 'Philippe', 'Nathalie', 'Antoine', 'Julie']
@@ -70,9 +70,8 @@ function genCardPayload(id: number, format: Format): string {
     const vals = Object.values(fields).join(',')
     return `${keys}\n${vals}`
   }
-  if (format === 'BASE64') {
-    const txt = Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join('\n')
-    return btoa(unescape(encodeURIComponent(txt)))
+  if (format === 'MESSAGE') {
+    return Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join('\n')
   }
   return ''
 }
@@ -80,7 +79,7 @@ function genCardPayload(id: number, format: Format): string {
 export default function Checkout() {
   const navigate = useNavigate()
   const { items, note, subtotal, clear } = useCartStore()
-  const [format, setFormat] = useState<Format>('TXT')
+  const [format, setFormat] = useState<Format>('MESSAGE')
 
   const goBack = () => {
     if (window.history.state?.idx > 0) navigate(-1)
@@ -102,10 +101,12 @@ export default function Checkout() {
             payload: genCardPayload(item.productId, format),
           }))
         )
-        await api.post('/api/deliver', {
+        // Fire-and-forget — bot send failure must not block order confirmation
+        api.post('/api/deliver', {
           deliveries: deliveries.map((d) => ({ productName: d.productName, payload: d.payload })),
           format,
-        })
+        }).catch((err) => console.warn('[deliver]', err))
+
         const state: MockOrderState = { mock: true, format, total, deliveries }
         clear()
         navigate('/order/mock', { state })
