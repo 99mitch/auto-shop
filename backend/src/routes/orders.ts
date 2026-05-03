@@ -35,8 +35,13 @@ router.post('/', async (req: AuthRequest, res) => {
 
   for (const item of items) {
     const product = products.find((p) => p.id === item.productId)!
-    if (product.stock < item.quantity) {
-      res.status(400).json({ error: `Insufficient stock for "${product.name}"` })
+    // Each CC is unique — quantity capped at 1
+    if (item.quantity > 1) {
+      res.status(400).json({ error: `One unit per card — "${product.name}"` })
+      return
+    }
+    if (product.stock < 1) {
+      res.status(400).json({ error: `Out of stock — "${product.name}"` })
       return
     }
   }

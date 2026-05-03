@@ -46,8 +46,6 @@ export default function Cart() {
     )
   }
 
-  const totalQty = items.reduce((s, i) => s + i.quantity, 0)
-
   return (
     <div style={{ background: '#050505', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <Header onBack={goBack} count={items.length} />
@@ -58,8 +56,7 @@ export default function Cart() {
           <CartRow
             key={item.productId}
             item={item}
-            onDecrement={() => updateQuantity(item.productId, item.quantity - 1)}
-            onIncrement={() => updateQuantity(item.productId, item.quantity + 1)}
+            onRemove={() => updateQuantity(item.productId, 0)}
           />
         ))}
 
@@ -102,7 +99,7 @@ export default function Cart() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace' }}>
-              SOUS-TOTAL ({totalQty} article{totalQty > 1 ? 's' : ''})
+              SOUS-TOTAL ({items.length} carte{items.length > 1 ? 's' : ''})
             </span>
             <span style={{ fontFamily: '"Bebas Neue", "Impact", sans-serif', fontSize: 24, color: '#fbbf24', letterSpacing: '0.04em', lineHeight: 1 }}>
               €{subtotal().toFixed(2)}
@@ -147,10 +144,9 @@ function Header({ onBack, count }: { onBack: () => void; count: number }) {
   )
 }
 
-function CartRow({ item, onDecrement, onIncrement }: {
+function CartRow({ item, onRemove }: {
   item: { productId: number; productName: string; productImageUrl: string; unitPrice: number; quantity: number }
-  onDecrement: () => void
-  onIncrement: () => void
+  onRemove: () => void
 }) {
   const [imgError, setImgError] = useState(false)
 
@@ -177,36 +173,17 @@ function CartRow({ item, onDecrement, onIncrement }: {
         <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>
           {item.productName}
         </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ fontFamily: '"Bebas Neue", "Impact", sans-serif', fontSize: 18, color: '#fbbf24', letterSpacing: '0.04em', lineHeight: 1 }}>
-            €{(item.unitPrice * item.quantity).toFixed(2)}
-          </span>
-          {item.quantity > 1 && (
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono", monospace' }}>
-              €{item.unitPrice.toFixed(2)} × {item.quantity}
-            </span>
-          )}
+        <div style={{ fontFamily: '"Bebas Neue", "Impact", sans-serif', fontSize: 18, color: '#fbbf24', letterSpacing: '0.04em', lineHeight: 1 }}>
+          €{item.unitPrice.toFixed(2)}
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        <button onClick={onDecrement} style={{
-          width: 30, height: 30, borderRadius: 8,
-          border: '1px solid rgba(255,255,255,0.12)', background: 'transparent',
-          color: item.quantity === 1 ? '#ef4444' : 'rgba(255,255,255,0.5)',
-          cursor: 'pointer', fontSize: 16, lineHeight: 1,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>−</button>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: '"JetBrains Mono", monospace', minWidth: 16, textAlign: 'center' }}>
-          {item.quantity}
-        </span>
-        <button onClick={onIncrement} style={{
-          width: 30, height: 30, borderRadius: 8,
-          background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
-          color: '#fbbf24', cursor: 'pointer', fontSize: 18, lineHeight: 1,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>+</button>
-      </div>
+      <button onClick={onRemove} style={{
+        width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+        border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)',
+        color: 'rgba(239,68,68,0.7)', cursor: 'pointer', fontSize: 14, lineHeight: 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>✕</button>
     </div>
   )
 }
