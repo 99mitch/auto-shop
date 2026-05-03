@@ -32,10 +32,15 @@ interface InventoryStats {
 }
 
 type CardLevel = 'CLASSIC' | 'GOLD' | 'PLATINUM' | 'BLACK'
+type CardNetwork = 'VISA' | 'MASTERCARD' | 'AMEX' | 'OTHER'
+type CardType = 'DEBIT' | 'CREDIT'
+type CardDevice = 'IPHONE' | 'ANDROID' | 'UNKNOWN'
+type CardSource = 'AMELI' | 'MONDIAL_RELAY' | 'AMAZON' | 'OTHER'
 
-interface CardForm {
-  bin: string; bank: string; level: CardLevel; prix: string; stock: string
-  cp: string; age: string; tags: string[]; categoryId: number
+interface CardMeta {
+  bin: string; bank: string; network: CardNetwork; level: CardLevel
+  type: CardType; device: CardDevice; source: CardSource
+  recoveryDate: string; ddn: string; cp: string; age: string
 }
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -57,13 +62,61 @@ const LEVEL_COLORS: Record<CardLevel, { bg: string; text: string; border: string
   BLACK:    { bg: 'rgba(255,255,255,0.06)', text: '#fff',    border: 'rgba(255,255,255,0.18)' },
 }
 
-function parseCardMeta(p: CollabProduct): CardForm {
+const NETWORK_COLORS: Record<CardNetwork, { bg: string; text: string; border?: string }> = {
+  VISA:       { bg: 'rgba(129,140,248,0.15)', text: '#818cf8' },
+  MASTERCARD: { bg: 'rgba(251,146,60,0.15)',  text: '#fb923c' },
+  AMEX:       { bg: 'rgba(74,222,128,0.15)',  text: '#4ade80' },
+  OTHER:      { bg: 'rgba(156,163,175,0.1)',  text: 'rgba(156,163,175,0.6)' },
+}
+
+const TYPE_COLORS: Record<CardType, { bg: string; text: string; border?: string }> = {
+  DEBIT:  { bg: 'rgba(250,204,21,0.15)', text: '#facc15' },
+  CREDIT: { bg: 'rgba(74,222,128,0.15)', text: '#4ade80' },
+}
+
+const DEVICE_COLORS: Record<CardDevice, { bg: string; text: string; border?: string }> = {
+  IPHONE:  { bg: 'rgba(156,163,175,0.12)', text: '#9ca3af' },
+  ANDROID: { bg: 'rgba(34,211,238,0.15)',  text: '#22d3ee' },
+  UNKNOWN: { bg: 'rgba(255,255,255,0.05)', text: 'rgba(255,255,255,0.3)' },
+}
+
+const SOURCE_COLORS: Record<CardSource, { bg: string; text: string; border?: string }> = {
+  AMELI:         { bg: 'rgba(244,114,182,0.15)', text: '#f472b6' },
+  MONDIAL_RELAY: { bg: 'rgba(251,191,36,0.15)',  text: '#fbbf24' },
+  AMAZON:        { bg: 'rgba(251,146,60,0.15)',  text: '#fb923c' },
+  OTHER:         { bg: 'rgba(255,255,255,0.05)', text: 'rgba(255,255,255,0.3)' },
+}
+
+function parseCardMeta(description: string): CardMeta {
+  const d: CardMeta = { bin: '', bank: '', network: 'OTHER', level: 'CLASSIC', type: 'CREDIT', device: 'UNKNOWN', source: 'OTHER', recoveryDate: '', ddn: '', cp: '', age: '' }
   try {
-    const m = JSON.parse(p.description || '{}')
-    return { bin: m.bin ?? '', bank: m.bank ?? '', level: m.level ?? 'CLASSIC', prix: String(p.price), stock: String(p.stock), cp: m.cp ?? '', age: m.age ?? '', tags: m.tags ?? [], categoryId: p.categoryId ?? 0 }
-  } catch {
-    return { bin: '', bank: '', level: 'CLASSIC', prix: String(p.price), stock: String(p.stock), cp: '', age: '', tags: [], categoryId: p.categoryId ?? 0 }
-  }
+    const m = JSON.parse(description || '{}')
+    const b0 = (m.bin || '')[0]
+    const autoNetwork: CardNetwork = b0 === '4' ? 'VISA' : b0 === '5' ? 'MASTERCARD' : b0 === '3' ? 'AMEX' : 'OTHER'
+    const tags: string[] = m.tags ?? []
+    return {
+      bin: m.bin ?? '', bank: m.bank ?? '',
+      network: m.network ?? autoNetwork,
+      level: m.level ?? 'CLASSIC',
+      type: m.type ?? (tags.includes('CREDIT') ? 'CREDIT' : 'DEBIT'),
+      device: m.device ?? (tags.includes('IPHONE') ? 'IPHONE' : tags.includes('ANDROID') ? 'ANDROID' : 'UNKNOWN'),
+      source: m.source ?? (tags.includes('AMELI') ? 'AMELI' : tags.includes('MONDIAL_RELAY') ? 'MONDIAL_RELAY' : tags.includes('AMAZON') ? 'AMAZON' : 'OTHER'),
+      recoveryDate: m.recoveryDate ?? '', ddn: m.ddn ?? '',
+      cp: m.cp ?? '', age: m.age ? String(m.age) : '',
+    }
+  } catch { return d }
+}
+
+// ── Badge component ────────────────────────────────────────────────────────────
+function Badge({ label, color }: { label: string; color: { bg: string; text: string; border?: string } }) {
+  return (
+    <span style={{
+      fontSize: 8, padding: '2px 7px', borderRadius: 20,
+      background: color.bg, color: color.text,
+      fontFamily: '"JetBrains Mono", monospace',
+      border: `1px solid ${color.border ?? color.bg}`,
+    }}>{label}</span>
+  )
 }
 
 // ── BulkUpload per-product panel ───────────────────────────────────────────────
@@ -149,7 +202,7 @@ function ProductRow({
   onCancelDelete: () => void
   deleting: boolean
 }) {
-  const meta = parseCardMeta(p)
+  const meta = parseCardMeta(p.description)
   const lc = LEVEL_COLORS[meta.level] ?? LEVEL_COLORS.CLASSIC
   const queryClient = useQueryClient()
 
@@ -191,6 +244,14 @@ function ProductRow({
                 {p.stock > 0 ? `×${p.stock}` : 'ÉPUISÉ'}
               </span>
             )}
+          </div>
+          {/* Badges row */}
+          <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
+            {meta.network !== 'OTHER' && <Badge label={meta.network} color={NETWORK_COLORS[meta.network]} />}
+            <Badge label={meta.type} color={TYPE_COLORS[meta.type]} />
+            {meta.device !== 'UNKNOWN' && <Badge label={meta.device} color={DEVICE_COLORS[meta.device]} />}
+            {meta.source !== 'OTHER' && <Badge label={meta.source.replace('_', ' ')} color={SOURCE_COLORS[meta.source]} />}
+            {meta.ddn && <Badge label={`DDN ${meta.ddn}`} color={{ bg: 'rgba(255,255,255,0.06)', text: 'rgba(255,255,255,0.5)' }} />}
           </div>
         </div>
         {/* Actions */}

@@ -5,25 +5,31 @@ import { api } from '../../lib/api'
 import type { Product, Category } from 'floramini-types'
 
 type CardLevel = 'CLASSIC' | 'GOLD' | 'PLATINUM' | 'BLACK'
+type CardNetwork = 'VISA' | 'MASTERCARD' | 'AMEX' | 'OTHER'
+type CardType = 'DEBIT' | 'CREDIT'
+type CardDevice = 'IPHONE' | 'ANDROID' | 'UNKNOWN'
+type CardSource = 'AMELI' | 'MONDIAL_RELAY' | 'AMAZON' | 'OTHER'
 
 interface CardMeta {
-  bin: string
-  bank: string
-  level: CardLevel
-  cp: string
-  age: string
-  tags: string[]
+  bin: string; bank: string; network: CardNetwork; level: CardLevel
+  type: CardType; device: CardDevice; source: CardSource
+  recoveryDate: string; ddn: string; cp: string; age: string
 }
 
 interface ProductForm {
   bin: string
   bank: string
   level: CardLevel
+  network: CardNetwork
+  cardType: CardType
+  device: CardDevice
+  source: CardSource
+  ddn: string
+  recoveryDate: string
   prix: string
   stock: string
   cp: string
   age: string
-  tags: string[]
   categoryId: number
   isActive: boolean
 }
@@ -34,28 +40,74 @@ interface InventoryStats {
   sold: number
 }
 
-const AVAILABLE_TAGS = ['CREDIT', 'DEBIT', 'IPHONE', 'ANDROID', 'AMELI']
 const LEVELS: CardLevel[] = ['CLASSIC', 'GOLD', 'PLATINUM', 'BLACK']
+const NETWORKS: CardNetwork[] = ['VISA', 'MASTERCARD', 'AMEX', 'OTHER']
+const CARD_TYPES: CardType[] = ['DEBIT', 'CREDIT']
+const DEVICES: CardDevice[] = ['IPHONE', 'ANDROID', 'UNKNOWN']
+const SOURCES: CardSource[] = ['AMELI', 'MONDIAL_RELAY', 'AMAZON', 'OTHER']
 
 const LEVEL_COLORS: Record<CardLevel, { bg: string; text: string; border: string }> = {
-  CLASSIC: { bg: 'rgba(156,163,175,0.15)', text: '#9ca3af', border: 'rgba(156,163,175,0.3)' },
-  GOLD: { bg: 'rgba(251,191,36,0.15)', text: '#fbbf24', border: 'rgba(251,191,36,0.4)' },
+  CLASSIC:  { bg: 'rgba(156,163,175,0.15)', text: '#9ca3af', border: 'rgba(156,163,175,0.3)' },
+  GOLD:     { bg: 'rgba(251,191,36,0.15)',  text: '#fbbf24', border: 'rgba(251,191,36,0.4)' },
   PLATINUM: { bg: 'rgba(229,231,235,0.15)', text: '#e5e7eb', border: 'rgba(229,231,235,0.35)' },
-  BLACK: { bg: 'rgba(255,255,255,0.08)', text: '#fff', border: 'rgba(255,255,255,0.2)' },
+  BLACK:    { bg: 'rgba(255,255,255,0.08)', text: '#fff',    border: 'rgba(255,255,255,0.2)' },
 }
 
-const emptyForm = (): ProductForm => ({
-  bin: '', bank: '', level: 'CLASSIC', prix: '', stock: '',
-  cp: '', age: '', tags: [], categoryId: 0, isActive: true,
-})
+const NETWORK_COLORS: Record<CardNetwork, { bg: string; text: string; border?: string }> = {
+  VISA:       { bg: 'rgba(129,140,248,0.15)', text: '#818cf8' },
+  MASTERCARD: { bg: 'rgba(251,146,60,0.15)',  text: '#fb923c' },
+  AMEX:       { bg: 'rgba(74,222,128,0.15)',  text: '#4ade80' },
+  OTHER:      { bg: 'rgba(156,163,175,0.1)',  text: 'rgba(156,163,175,0.6)' },
+}
 
-function parseCardMeta(p: Product): CardMeta {
+const TYPE_COLORS: Record<CardType, { bg: string; text: string; border?: string }> = {
+  DEBIT:  { bg: 'rgba(250,204,21,0.15)', text: '#facc15' },
+  CREDIT: { bg: 'rgba(74,222,128,0.15)', text: '#4ade80' },
+}
+
+const DEVICE_COLORS: Record<CardDevice, { bg: string; text: string; border?: string }> = {
+  IPHONE:  { bg: 'rgba(156,163,175,0.12)', text: '#9ca3af' },
+  ANDROID: { bg: 'rgba(34,211,238,0.15)',  text: '#22d3ee' },
+  UNKNOWN: { bg: 'rgba(255,255,255,0.05)', text: 'rgba(255,255,255,0.3)' },
+}
+
+const SOURCE_COLORS: Record<CardSource, { bg: string; text: string; border?: string }> = {
+  AMELI:        { bg: 'rgba(244,114,182,0.15)', text: '#f472b6' },
+  MONDIAL_RELAY:{ bg: 'rgba(251,191,36,0.15)',  text: '#fbbf24' },
+  AMAZON:       { bg: 'rgba(251,146,60,0.15)',  text: '#fb923c' },
+  OTHER:        { bg: 'rgba(255,255,255,0.05)', text: 'rgba(255,255,255,0.3)' },
+}
+
+function parseCardMeta(description: string): CardMeta {
+  const d: CardMeta = { bin: '', bank: '', network: 'OTHER', level: 'CLASSIC', type: 'CREDIT', device: 'UNKNOWN', source: 'OTHER', recoveryDate: '', ddn: '', cp: '', age: '' }
   try {
-    const m = JSON.parse(p.description || '{}')
-    return { bin: m.bin ?? '', bank: m.bank ?? '', level: m.level ?? 'CLASSIC', cp: m.cp ?? '', age: m.age ?? '', tags: m.tags ?? [] }
-  } catch {
-    return { bin: '', bank: '', level: 'CLASSIC', cp: '', age: '', tags: [] }
-  }
+    const m = JSON.parse(description || '{}')
+    const b0 = (m.bin || '')[0]
+    const autoNetwork: CardNetwork = b0 === '4' ? 'VISA' : b0 === '5' ? 'MASTERCARD' : b0 === '3' ? 'AMEX' : 'OTHER'
+    const tags: string[] = m.tags ?? []
+    return {
+      bin: m.bin ?? '', bank: m.bank ?? '',
+      network: m.network ?? autoNetwork,
+      level: m.level ?? 'CLASSIC',
+      type: m.type ?? (tags.includes('CREDIT') ? 'CREDIT' : 'DEBIT'),
+      device: m.device ?? (tags.includes('IPHONE') ? 'IPHONE' : tags.includes('ANDROID') ? 'ANDROID' : 'UNKNOWN'),
+      source: m.source ?? (tags.includes('AMELI') ? 'AMELI' : tags.includes('MONDIAL_RELAY') ? 'MONDIAL_RELAY' : tags.includes('AMAZON') ? 'AMAZON' : 'OTHER'),
+      recoveryDate: m.recoveryDate ?? '', ddn: m.ddn ?? '',
+      cp: m.cp ?? '', age: m.age ? String(m.age) : '',
+    }
+  } catch { return d }
+}
+
+// ── Badge component ────────────────────────────────────────────────────────────
+function Badge({ label, color }: { label: string; color: { bg: string; text: string; border?: string } }) {
+  return (
+    <span style={{
+      fontSize: 8, padding: '2px 7px', borderRadius: 20,
+      background: color.bg, color: color.text,
+      fontFamily: '"JetBrains Mono",monospace',
+      border: `1px solid ${color.border ?? color.bg}`,
+    }}>{label}</span>
+  )
 }
 
 const inputStyle: React.CSSProperties = {
@@ -69,6 +121,12 @@ const labelStyle: React.CSSProperties = {
   color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono",monospace',
   textTransform: 'uppercase', marginBottom: 5, display: 'block',
 }
+
+const emptyForm = (): ProductForm => ({
+  bin: '', bank: '', level: 'CLASSIC', network: 'OTHER', cardType: 'CREDIT',
+  device: 'UNKNOWN', source: 'OTHER', ddn: '', recoveryDate: '',
+  prix: '', stock: '0', cp: '', age: '', categoryId: 0, isActive: true,
+})
 
 // ── InventoryPanel component ───────────────────────────────────────────────────
 function InventoryPanel({ productId }: { productId: number }) {
@@ -135,14 +193,14 @@ function InventoryPanel({ productId }: { productId: number }) {
 
       {/* Format hint */}
       <div style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', color: 'rgba(255,255,255,0.18)', marginBottom: 6 }}>
-        Format: 4567890123456789|12/26|123|John Doe|75 Rue de Rivoli|75001|France
+        Format: 4567890123456789|12/26|123|Jean DUPONT|14 Rue de la Paix|75001|Paris|France|jean@gmail.com|0601020304
       </div>
 
       {/* Textarea */}
       <textarea
         value={text}
         onChange={e => { setText(e.target.value); setUploadResult(null) }}
-        placeholder={'4111111111111111|12/26|123|Jean Dupont|75001|France\n5500005555555559|01/27|456|Marie Martin|69001|France'}
+        placeholder={'4111111111111111|12/26|123|Jean Dupont|14 Rue de Rivoli|75001|Paris|France|jean@email.com|0601020304\n5500005555555559|01/27|456|Marie Martin|5 Av. des Champs|69001|Lyon|France|marie@email.com|0607080910'}
         style={{
           width: '100%', minHeight: 80, background: '#1a1a1a',
           border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8,
@@ -222,7 +280,7 @@ function ProductCard({
   onDelete: () => void
   deleting: boolean
 }) {
-  const meta = parseCardMeta(p)
+  const meta = parseCardMeta(p.description)
   const lc = LEVEL_COLORS[meta.level] ?? LEVEL_COLORS.CLASSIC
   const [showInventory, setShowInventory] = useState(false)
 
@@ -275,12 +333,14 @@ function ProductCard({
         </div>
       </div>
 
-      {/* Tags row */}
-      {meta.tags.length > 0 && (
-        <div style={{ display: 'flex', gap: 4, padding: '0 12px 8px', flexWrap: 'wrap' }}>
-          {meta.tags.map(t => <span key={t} style={{ fontSize: 8, padding: '2px 7px', borderRadius: 20, background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono",monospace', border: '1px solid rgba(255,255,255,0.06)' }}>{t}</span>)}
-        </div>
-      )}
+      {/* Badges row */}
+      <div style={{ display: 'flex', gap: 4, padding: '0 12px 8px', flexWrap: 'wrap' }}>
+        {meta.network !== 'OTHER' && <Badge label={meta.network} color={NETWORK_COLORS[meta.network]} />}
+        <Badge label={meta.type} color={TYPE_COLORS[meta.type]} />
+        {meta.device !== 'UNKNOWN' && <Badge label={meta.device} color={DEVICE_COLORS[meta.device]} />}
+        {meta.source !== 'OTHER' && <Badge label={meta.source.replace('_', ' ')} color={SOURCE_COLORS[meta.source]} />}
+        {meta.ddn && <Badge label={`DDN ${meta.ddn}`} color={{ bg: 'rgba(255,255,255,0.06)', text: 'rgba(255,255,255,0.5)' }} />}
+      </div>
 
       {/* Delete confirm */}
       {confirmDelete && (
@@ -320,12 +380,16 @@ export default function AdminProducts() {
 
   const saveProduct = useMutation({
     mutationFn: () => {
-      const meta: CardMeta = { bin: form.bin, bank: form.bank, level: form.level, cp: form.cp, age: form.age, tags: form.tags }
+      const meta = {
+        bin: form.bin, bank: form.bank, network: form.network, level: form.level,
+        type: form.cardType, device: form.device, source: form.source,
+        recoveryDate: form.recoveryDate, ddn: form.ddn, cp: form.cp, age: form.age,
+      }
       const body = {
-        name: `${form.bank} ${form.level}`,
+        name: `${form.bank} ${form.network} ${form.level}`,
         description: JSON.stringify(meta),
         price: parseFloat(form.prix),
-        stock: parseInt(form.stock),
+        stock: parseInt(form.stock) || 0,
         categoryId: Number(form.categoryId) || null,
         imageUrl: form.bin.length >= 6 ? `https://cardimages.imaginecurve.com/cards/${form.bin.slice(0, 6)}.png` : '',
         isActive: form.isActive,
@@ -352,15 +416,29 @@ export default function AdminProducts() {
   })
 
   function startEdit(p: Product) {
-    const meta = parseCardMeta(p)
+    const meta = parseCardMeta(p.description)
     setEditingId(p.id)
-    setForm({ bin: meta.bin, bank: meta.bank, level: meta.level, prix: String(p.price), stock: String(p.stock), cp: meta.cp, age: meta.age, tags: meta.tags, categoryId: p.categoryId ?? 0, isActive: p.isActive })
+    setForm({
+      bin: meta.bin, bank: meta.bank, level: meta.level, network: meta.network,
+      cardType: meta.type, device: meta.device, source: meta.source,
+      ddn: meta.ddn, recoveryDate: meta.recoveryDate,
+      prix: String(p.price), stock: String(p.stock),
+      cp: meta.cp, age: meta.age, categoryId: p.categoryId ?? 0, isActive: p.isActive,
+    })
     setShowForm(true)
     setTimeout(() => document.getElementById('products-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
 
-  function toggleTag(tag: string) {
-    setForm(f => ({ ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }))
+  // Toggle button shared style helper
+  function toggleBtn(active: boolean, activeColor: { bg: string; text: string; border?: string }) {
+    return {
+      flex: 1, padding: '7px 0', borderRadius: 8,
+      border: `1px solid ${active ? (activeColor.border ?? activeColor.bg) : 'rgba(255,255,255,0.07)'}`,
+      background: active ? activeColor.bg : 'transparent',
+      color: active ? activeColor.text : 'rgba(255,255,255,0.25)',
+      fontSize: 9, fontFamily: '"JetBrains Mono",monospace' as const,
+      fontWeight: 700 as const, letterSpacing: '0.06em', cursor: 'pointer' as const,
+    }
   }
 
   return (
@@ -392,7 +470,19 @@ export default function AdminProducts() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={labelStyle}>BIN (6 chiffres)</label>
-                <input style={inputStyle} value={form.bin} onChange={e => setForm(f => ({ ...f, bin: e.target.value.replace(/\D/g, '').slice(0, 6) }))} placeholder="456789" maxLength={6} inputMode="numeric" />
+                <input
+                  style={inputStyle}
+                  value={form.bin}
+                  onChange={e => {
+                    const bin = e.target.value.replace(/\D/g, '').slice(0, 6)
+                    const b0 = bin[0]
+                    const network: CardNetwork = b0 === '4' ? 'VISA' : b0 === '5' ? 'MASTERCARD' : b0 === '3' ? 'AMEX' : form.network
+                    setForm(f => ({ ...f, bin, network }))
+                  }}
+                  placeholder="456789"
+                  maxLength={6}
+                  inputMode="numeric"
+                />
               </div>
               <div>
                 <label style={labelStyle}>Banque</label>
@@ -416,11 +506,71 @@ export default function AdminProducts() {
                   const c = LEVEL_COLORS[lvl]
                   const active = form.level === lvl
                   return (
-                    <button key={lvl} onClick={() => setForm(f => ({ ...f, level: lvl }))} style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: `1px solid ${active ? c.border : 'rgba(255,255,255,0.07)'}`, background: active ? c.bg : 'transparent', color: active ? c.text : 'rgba(255,255,255,0.25)', fontSize: 9, fontFamily: '"JetBrains Mono",monospace', fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer' }}>
+                    <button key={lvl} onClick={() => setForm(f => ({ ...f, level: lvl }))} style={toggleBtn(active, c)}>
                       {lvl}
                     </button>
                   )
                 })}
+              </div>
+            </div>
+
+            {/* Network */}
+            <div>
+              <label style={labelStyle}>Réseau</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {NETWORKS.map(net => (
+                  <button key={net} onClick={() => setForm(f => ({ ...f, network: net }))} style={toggleBtn(form.network === net, NETWORK_COLORS[net])}>
+                    {net}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Type */}
+            <div>
+              <label style={labelStyle}>Type</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {CARD_TYPES.map(t => (
+                  <button key={t} onClick={() => setForm(f => ({ ...f, cardType: t }))} style={toggleBtn(form.cardType === t, TYPE_COLORS[t])}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Device */}
+            <div>
+              <label style={labelStyle}>Appareil</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {DEVICES.map(d => (
+                  <button key={d} onClick={() => setForm(f => ({ ...f, device: d }))} style={toggleBtn(form.device === d, DEVICE_COLORS[d])}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Source */}
+            <div>
+              <label style={labelStyle}>Source</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {SOURCES.map(s => (
+                  <button key={s} onClick={() => setForm(f => ({ ...f, source: s }))} style={toggleBtn(form.source === s, SOURCE_COLORS[s])}>
+                    {s.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* DDN + Date récup */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={labelStyle}>DDN (pré-vente)</label>
+                <input style={inputStyle} value={form.ddn} onChange={e => setForm(f => ({ ...f, ddn: e.target.value }))} placeholder="JJ/MM/AAAA" />
+              </div>
+              <div>
+                <label style={labelStyle}>Date récupération</label>
+                <input style={{ ...inputStyle, colorScheme: 'dark' }} type="date" value={form.recoveryDate} onChange={e => setForm(f => ({ ...f, recoveryDate: e.target.value }))} />
               </div>
             </div>
 
@@ -431,8 +581,8 @@ export default function AdminProducts() {
                 <input style={inputStyle} type="number" value={form.prix} onChange={e => setForm(f => ({ ...f, prix: e.target.value }))} placeholder="49.99" inputMode="decimal" />
               </div>
               <div>
-                <label style={labelStyle}>Stock</label>
-                <input style={inputStyle} type="number" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} placeholder="10" inputMode="numeric" />
+                <label style={labelStyle}>Stock initial (géré par inventaire)</label>
+                <input style={inputStyle} type="number" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} placeholder="0" inputMode="numeric" />
               </div>
             </div>
 
@@ -445,21 +595,6 @@ export default function AdminProducts() {
               <div>
                 <label style={labelStyle}>Âge titulaire</label>
                 <input style={inputStyle} value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} placeholder="35" inputMode="numeric" />
-              </div>
-            </div>
-
-            {/* Tags */}
-            <div>
-              <label style={labelStyle}>Tags</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {AVAILABLE_TAGS.map(tag => {
-                  const active = form.tags.includes(tag)
-                  return (
-                    <button key={tag} onClick={() => toggleTag(tag)} style={{ padding: '5px 10px', borderRadius: 20, border: `1px solid ${active ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.08)'}`, background: active ? 'rgba(251,191,36,0.12)' : 'transparent', color: active ? '#fbbf24' : 'rgba(255,255,255,0.3)', fontSize: 9, fontFamily: '"JetBrains Mono",monospace', fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer' }}>
-                      {tag}
-                    </button>
-                  )
-                })}
               </div>
             </div>
 

@@ -5,16 +5,31 @@ import { api } from '../../lib/api'
 import type { Category } from 'floramini-types'
 
 type CardLevel = 'CLASSIC' | 'GOLD' | 'PLATINUM' | 'BLACK'
+type CardNetwork = 'VISA' | 'MASTERCARD' | 'AMEX' | 'OTHER'
+type CardType = 'DEBIT' | 'CREDIT'
+type CardDevice = 'IPHONE' | 'ANDROID' | 'UNKNOWN'
+type CardSource = 'AMELI' | 'MONDIAL_RELAY' | 'AMAZON' | 'OTHER'
+
+interface CardMeta {
+  bin: string; bank: string; network: CardNetwork; level: CardLevel
+  type: CardType; device: CardDevice; source: CardSource
+  recoveryDate: string; ddn: string; cp: string; age: string
+}
 
 interface CardForm {
   bin: string
   bank: string
   level: CardLevel
+  network: CardNetwork
+  cardType: CardType
+  device: CardDevice
+  source: CardSource
+  ddn: string
+  recoveryDate: string
   prix: string
   stock: string
   cp: string
   age: string
-  tags: string[]
   categoryId: number
 }
 
@@ -46,8 +61,12 @@ const INPUT_STYLE: React.CSSProperties = {
   fontFamily: '"JetBrains Mono", monospace', outline: 'none', boxSizing: 'border-box' as const,
 }
 
-const AVAILABLE_TAGS = ['CREDIT', 'DEBIT', 'IPHONE', 'ANDROID', 'AMELI']
 const LEVELS: CardLevel[] = ['CLASSIC', 'GOLD', 'PLATINUM', 'BLACK']
+const NETWORKS: CardNetwork[] = ['VISA', 'MASTERCARD', 'AMEX', 'OTHER']
+const CARD_TYPES: CardType[] = ['DEBIT', 'CREDIT']
+const DEVICES: CardDevice[] = ['IPHONE', 'ANDROID', 'UNKNOWN']
+const SOURCES: CardSource[] = ['AMELI', 'MONDIAL_RELAY', 'AMAZON', 'OTHER']
+
 const LEVEL_COLORS: Record<CardLevel, { bg: string; text: string; border: string }> = {
   CLASSIC:  { bg: 'rgba(156,163,175,0.12)', text: '#9ca3af', border: 'rgba(156,163,175,0.25)' },
   GOLD:     { bg: 'rgba(251,191,36,0.12)',  text: '#fbbf24', border: 'rgba(251,191,36,0.35)' },
@@ -55,33 +74,65 @@ const LEVEL_COLORS: Record<CardLevel, { bg: string; text: string; border: string
   BLACK:    { bg: 'rgba(255,255,255,0.06)', text: '#fff',    border: 'rgba(255,255,255,0.18)' },
 }
 
-const emptyCardForm = (): CardForm => ({
-  bin: '', bank: '', level: 'CLASSIC', prix: '', stock: '1', cp: '', age: '', tags: [], categoryId: 0,
-})
-
-function parseCardMeta(p: CollabProduct): CardForm {
-  try {
-    const m = JSON.parse(p.description || '{}')
-    return {
-      bin: m.bin ?? '',
-      bank: m.bank ?? '',
-      level: m.level ?? 'CLASSIC',
-      prix: String(p.price),
-      stock: String(p.stock),
-      cp: m.cp ?? '',
-      age: m.age ?? '',
-      tags: m.tags ?? [],
-      categoryId: p.categoryId ?? 0,
-    }
-  } catch {
-    return { ...emptyCardForm(), prix: String(p.price), stock: String(p.stock), categoryId: p.categoryId ?? 0 }
-  }
+const NETWORK_COLORS: Record<CardNetwork, { bg: string; text: string; border?: string }> = {
+  VISA:       { bg: 'rgba(129,140,248,0.15)', text: '#818cf8' },
+  MASTERCARD: { bg: 'rgba(251,146,60,0.15)',  text: '#fb923c' },
+  AMEX:       { bg: 'rgba(74,222,128,0.15)',  text: '#4ade80' },
+  OTHER:      { bg: 'rgba(156,163,175,0.1)',  text: 'rgba(156,163,175,0.6)' },
 }
+
+const TYPE_COLORS: Record<CardType, { bg: string; text: string; border?: string }> = {
+  DEBIT:  { bg: 'rgba(250,204,21,0.15)', text: '#facc15' },
+  CREDIT: { bg: 'rgba(74,222,128,0.15)', text: '#4ade80' },
+}
+
+const DEVICE_COLORS: Record<CardDevice, { bg: string; text: string; border?: string }> = {
+  IPHONE:  { bg: 'rgba(156,163,175,0.12)', text: '#9ca3af' },
+  ANDROID: { bg: 'rgba(34,211,238,0.15)',  text: '#22d3ee' },
+  UNKNOWN: { bg: 'rgba(255,255,255,0.05)', text: 'rgba(255,255,255,0.3)' },
+}
+
+const SOURCE_COLORS: Record<CardSource, { bg: string; text: string; border?: string }> = {
+  AMELI:         { bg: 'rgba(244,114,182,0.15)', text: '#f472b6' },
+  MONDIAL_RELAY: { bg: 'rgba(251,191,36,0.15)',  text: '#fbbf24' },
+  AMAZON:        { bg: 'rgba(251,146,60,0.15)',  text: '#fb923c' },
+  OTHER:         { bg: 'rgba(255,255,255,0.05)', text: 'rgba(255,255,255,0.3)' },
+}
+
+function parseCardMeta(description: string): CardMeta {
+  const d: CardMeta = { bin: '', bank: '', network: 'OTHER', level: 'CLASSIC', type: 'CREDIT', device: 'UNKNOWN', source: 'OTHER', recoveryDate: '', ddn: '', cp: '', age: '' }
+  try {
+    const m = JSON.parse(description || '{}')
+    const b0 = (m.bin || '')[0]
+    const autoNetwork: CardNetwork = b0 === '4' ? 'VISA' : b0 === '5' ? 'MASTERCARD' : b0 === '3' ? 'AMEX' : 'OTHER'
+    const tags: string[] = m.tags ?? []
+    return {
+      bin: m.bin ?? '', bank: m.bank ?? '',
+      network: m.network ?? autoNetwork,
+      level: m.level ?? 'CLASSIC',
+      type: m.type ?? (tags.includes('CREDIT') ? 'CREDIT' : 'DEBIT'),
+      device: m.device ?? (tags.includes('IPHONE') ? 'IPHONE' : tags.includes('ANDROID') ? 'ANDROID' : 'UNKNOWN'),
+      source: m.source ?? (tags.includes('AMELI') ? 'AMELI' : tags.includes('MONDIAL_RELAY') ? 'MONDIAL_RELAY' : tags.includes('AMAZON') ? 'AMAZON' : 'OTHER'),
+      recoveryDate: m.recoveryDate ?? '', ddn: m.ddn ?? '',
+      cp: m.cp ?? '', age: m.age ? String(m.age) : '',
+    }
+  } catch { return d }
+}
+
+const emptyCardForm = (): CardForm => ({
+  bin: '', bank: '', level: 'CLASSIC', network: 'OTHER', cardType: 'CREDIT',
+  device: 'UNKNOWN', source: 'OTHER', ddn: '', recoveryDate: '',
+  prix: '', stock: '1', cp: '', age: '', categoryId: 0,
+})
 
 function buildProductPayload(form: CardForm) {
   return {
-    name: `${form.bank} ${form.level}`,
-    description: JSON.stringify({ bin: form.bin, bank: form.bank, level: form.level, cp: form.cp, age: form.age, tags: form.tags }),
+    name: `${form.bank} ${form.network} ${form.level}`,
+    description: JSON.stringify({
+      bin: form.bin, bank: form.bank, network: form.network, level: form.level,
+      type: form.cardType, device: form.device, source: form.source,
+      recoveryDate: form.recoveryDate, ddn: form.ddn, cp: form.cp, age: form.age,
+    }),
     price: parseFloat(form.prix),
     stock: parseInt(form.stock) || 0,
     categoryId: form.categoryId || undefined,
@@ -97,8 +148,15 @@ function CardFormFields({ form, onChange, categories }: {
   categories: Category[]
 }) {
   function set(patch: Partial<CardForm>) { onChange({ ...form, ...patch }) }
-  function toggleTag(tag: string) {
-    set({ tags: form.tags.includes(tag) ? form.tags.filter(t => t !== tag) : [...form.tags, tag] })
+
+  function toggleBtn(active: boolean, color: { bg: string; text: string; border?: string }) {
+    return {
+      flex: 1, padding: '8px 0', borderRadius: 9,
+      border: `1px solid ${active ? (color.border ?? color.bg) : 'rgba(255,255,255,0.07)'}`,
+      background: active ? color.bg : 'transparent',
+      color: active ? color.text : 'rgba(255,255,255,0.2)',
+      fontSize: 9, ...MONO, fontWeight: 700 as const, letterSpacing: '0.06em', cursor: 'pointer' as const,
+    }
   }
 
   return (
@@ -110,7 +168,12 @@ function CardFormFields({ form, onChange, categories }: {
           <input
             style={INPUT_STYLE}
             value={form.bin}
-            onChange={e => set({ bin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+            onChange={e => {
+              const bin = e.target.value.replace(/\D/g, '').slice(0, 6)
+              const b0 = bin[0]
+              const network: CardNetwork = b0 === '4' ? 'VISA' : b0 === '5' ? 'MASTERCARD' : b0 === '3' ? 'AMEX' : form.network
+              set({ bin, network })
+            }}
             placeholder="456789"
             inputMode="numeric"
             maxLength={6}
@@ -144,25 +207,81 @@ function CardFormFields({ form, onChange, categories }: {
       <div>
         <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Niveau</div>
         <div style={{ display: 'flex', gap: 6 }}>
-          {LEVELS.map(lvl => {
-            const c = LEVEL_COLORS[lvl]
-            const active = form.level === lvl
-            return (
-              <button
-                key={lvl}
-                onClick={() => set({ level: lvl })}
-                style={{
-                  flex: 1, padding: '8px 0', borderRadius: 9,
-                  border: `1px solid ${active ? c.border : 'rgba(255,255,255,0.07)'}`,
-                  background: active ? c.bg : 'transparent',
-                  color: active ? c.text : 'rgba(255,255,255,0.2)',
-                  fontSize: 9, ...MONO, fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer',
-                }}
-              >
-                {lvl}
-              </button>
-            )
-          })}
+          {LEVELS.map(lvl => (
+            <button key={lvl} onClick={() => set({ level: lvl })} style={toggleBtn(form.level === lvl, LEVEL_COLORS[lvl])}>
+              {lvl}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Réseau */}
+      <div>
+        <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Réseau</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {NETWORKS.map(net => (
+            <button key={net} onClick={() => set({ network: net })} style={toggleBtn(form.network === net, NETWORK_COLORS[net])}>
+              {net}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Type */}
+      <div>
+        <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Type</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {CARD_TYPES.map(t => (
+            <button key={t} onClick={() => set({ cardType: t })} style={toggleBtn(form.cardType === t, TYPE_COLORS[t])}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Appareil */}
+      <div>
+        <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Appareil</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {DEVICES.map(d => (
+            <button key={d} onClick={() => set({ device: d })} style={toggleBtn(form.device === d, DEVICE_COLORS[d])}>
+              {d}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Source */}
+      <div>
+        <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Source</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {SOURCES.map(s => (
+            <button key={s} onClick={() => set({ source: s })} style={toggleBtn(form.source === s, SOURCE_COLORS[s])}>
+              {s.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* DDN + Date récup */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div>
+          <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>DDN (pré-vente)</div>
+          <input
+            style={INPUT_STYLE}
+            value={form.ddn}
+            onChange={e => set({ ddn: e.target.value })}
+            placeholder="JJ/MM/AAAA"
+          />
+        </div>
+        <div>
+          <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Date récupération</div>
+          <input
+            style={{ ...INPUT_STYLE, colorScheme: 'dark' } as React.CSSProperties}
+            type="date"
+            value={form.recoveryDate}
+            onChange={e => set({ recoveryDate: e.target.value })}
+          />
         </div>
       </div>
 
@@ -215,31 +334,6 @@ function CardFormFields({ form, onChange, categories }: {
         </div>
       </div>
 
-      {/* Tags */}
-      <div>
-        <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Tags</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {AVAILABLE_TAGS.map(tag => {
-            const active = form.tags.includes(tag)
-            return (
-              <button
-                key={tag}
-                onClick={() => toggleTag(tag)}
-                style={{
-                  padding: '6px 12px', borderRadius: 20,
-                  border: `1px solid ${active ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                  background: active ? 'rgba(251,191,36,0.1)' : 'transparent',
-                  color: active ? GOLD : 'rgba(255,255,255,0.25)',
-                  fontSize: 9, ...MONO, fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer',
-                }}
-              >
-                {tag}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
       {/* Catégorie */}
       {categories.length > 0 && (
         <div>
@@ -287,7 +381,14 @@ export default function CollabAddCard() {
 
   useEffect(() => {
     if (existingProduct) {
-      setForm(parseCardMeta(existingProduct))
+      const meta = parseCardMeta(existingProduct.description)
+      setForm({
+        bin: meta.bin, bank: meta.bank, level: meta.level, network: meta.network,
+        cardType: meta.type, device: meta.device, source: meta.source,
+        ddn: meta.ddn, recoveryDate: meta.recoveryDate,
+        prix: String(existingProduct.price), stock: String(existingProduct.stock),
+        cp: meta.cp, age: meta.age, categoryId: existingProduct.categoryId ?? 0,
+      })
     }
   }, [existingProduct])
 

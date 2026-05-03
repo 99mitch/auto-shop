@@ -13,32 +13,71 @@ import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 const ALL = ''
 const CARD_IMG = (bin: string) => `https://cardimages.imaginecurve.com/cards/${bin}.png`
 
-export type CardExtras = { bin: string; niveau: string; age: number; cp: string; tags: string[]; banque: string; categoryId?: number; isActive?: boolean }
+type CardNetwork = 'VISA' | 'MASTERCARD' | 'AMEX' | 'OTHER'
+type CardType = 'DEBIT' | 'CREDIT'
+type CardDevice = 'IPHONE' | 'ANDROID' | 'UNKNOWN'
+type CardSource = 'AMELI' | 'MONDIAL_RELAY' | 'AMAZON' | 'OTHER'
+
+interface CardMeta {
+  bin: string; bank: string; network: CardNetwork; level: 'CLASSIC' | 'GOLD' | 'PLATINUM' | 'BLACK'
+  type: CardType; device: CardDevice; source: CardSource
+  recoveryDate: string; ddn: string; cp: string; age: string
+}
+
+function parseCardMeta(description: string): CardMeta {
+  const d: CardMeta = { bin: '', bank: '', network: 'OTHER', level: 'CLASSIC', type: 'CREDIT', device: 'UNKNOWN', source: 'OTHER', recoveryDate: '', ddn: '', cp: '', age: '' }
+  try {
+    const m = JSON.parse(description || '{}')
+    const b0 = (m.bin || '')[0]
+    const autoNetwork: CardNetwork = b0 === '4' ? 'VISA' : b0 === '5' ? 'MASTERCARD' : b0 === '3' ? 'AMEX' : 'OTHER'
+    const tags: string[] = m.tags ?? []
+    return {
+      bin: m.bin ?? '', bank: m.bank ?? '',
+      network: m.network ?? autoNetwork,
+      level: m.level ?? 'CLASSIC',
+      type: m.type ?? (tags.includes('CREDIT') ? 'CREDIT' : 'DEBIT'),
+      device: m.device ?? (tags.includes('IPHONE') ? 'IPHONE' : tags.includes('ANDROID') ? 'ANDROID' : 'UNKNOWN'),
+      source: m.source ?? (tags.includes('AMELI') ? 'AMELI' : tags.includes('MONDIAL_RELAY') ? 'MONDIAL_RELAY' : tags.includes('AMAZON') ? 'AMAZON' : 'OTHER'),
+      recoveryDate: m.recoveryDate ?? '', ddn: m.ddn ?? '',
+      cp: m.cp ?? '', age: m.age ? String(m.age) : '',
+    }
+  } catch { return d }
+}
+
+export type CardExtras = {
+  bin: string; niveau: string; age: number; cp: string; tags: string[]; banque: string
+  categoryId?: number; isActive?: boolean
+  network: CardNetwork; cardType: CardType; device: CardDevice; source: CardSource
+  ddn: string; recoveryDate: string
+}
 export type MockCard = Omit<Product, 'categoryId' | 'isActive'> & CardExtras
 
 const mc = (
   id: number, bin: string, name: string, price: number, stock: number,
   catId: number, catName: string, catSlug: string, desc: string,
   niveau: string, age: number, cp: string, tags: string[], banque: string,
+  network: CardNetwork, cardType: CardType, device: CardDevice, source: CardSource,
+  ddn: string, recoveryDate: string,
 ): MockCard => ({
   id, bin, name, price, stock, imageUrl: CARD_IMG(bin), images: [], description: desc,
   categoryId: catId, isActive: true, niveau, age, cp, tags, banque,
+  network, cardType, device, source, ddn, recoveryDate,
   category: { id: catId, name: catName, slug: catSlug, order: catId },
 })
 
 export const MOCK_CARDS: MockCard[] = [
-  mc(1,  '497203', 'Crédit Mutuel Visa Classic',    18, 8,  1, 'Visa', 'visa', 'Crédit Mutuel — Visa Classic. Balance vérifiée, CVV inclus.',  'CLASSIC', 34, '75012', ['VISA', 'DEBIT',   "AUJOURD'HUI"],                  'CRÉDIT MUTUEL'),
-  mc(2,  '497207', 'Crédit Mutuel Visa Gold',       30, 3,  1, 'Visa', 'visa', 'Crédit Mutuel — Visa Gold. Plafond élevé. CVV + date inclus.', 'GOLD',    48, '69001', ['VISA', 'CREDIT', 'AMELI', 'ANDROID', 'J-1'],       'CRÉDIT MUTUEL'),
-  mc(3,  '497208', 'CIC Visa Premier',              45, 5,  1, 'Visa', 'visa', 'CIC — Visa Premier. Fullz disponible sur demande.',            'PREMIER', 52, '33000', ['VISA', 'CREDIT', 'AMELI', 'IPHONE', "AUJOURD'HUI"], 'CIC'),
-  mc(4,  '497490', 'Crédit Agricole Visa Classic',  15, 12, 1, 'Visa', 'visa', 'Crédit Agricole — Visa Classic. Testé & valide.',             'CLASSIC', 27, '13001', ['VISA', 'DEBIT',   'ANDROID', "AUJOURD'HUI"],        'CRÉDIT AGRICOLE'),
-  mc(5,  '497492', 'Crédit Agricole Visa Premier',  38, 2,  1, 'Visa', 'visa', 'Crédit Agricole — Visa Premier. Stock limité.',               'PREMIER', 61, '59000', ['VISA', 'CREDIT', 'AMELI', 'IPHONE', 'J-1'],         'CRÉDIT AGRICOLE'),
-  mc(6,  '497410', 'LCL Visa Classic',              20, 9,  1, 'Visa', 'visa', 'LCL — Visa Classic. Livraison en moins de 24h.',              'CLASSIC', 38, '44000', ['VISA', 'DEBIT',   "AUJOURD'HUI"],                  'LCL'),
-  mc(7,  '497413', 'LCL Visa Premier',              42, 6,  1, 'Visa', 'visa', 'LCL — Visa Premier. Haut plafond. CVV + expiry fournis.',     'PREMIER', 47, '31000', ['VISA', 'CREDIT', 'AMELI', 'ANDROID', "AUJOURD'HUI"], 'LCL'),
-  mc(8,  '497974', 'BNP Paribas Visa Premier',      55, 4,  1, 'Visa', 'visa', 'BNP Paribas — Visa Premier. Compte vérifié, solde garanti.',  'PREMIER', 55, '75008', ['VISA', 'CREDIT', 'AMELI', 'IPHONE', 'J-1'],         'BNP PARIBAS'),
-  mc(9,  '498208', 'Société Générale Visa Premier', 48, 7,  1, 'Visa', 'visa', 'Société Générale — Visa Premier. Fullz dispo.',               'PREMIER', 43, '92100', ['VISA', 'CREDIT', 'ANDROID', "AUJOURD'HUI"],          'SOCIÉTÉ GÉNÉRALE'),
-  mc(10, '534543', 'BNP Paribas Mastercard Gold',   50, 3,  2, 'Mastercard', 'mc', 'BNP Paribas — Mastercard Gold. Solde élevé.',             'GOLD',    39, '06000', ['MASTERCARD', 'CREDIT', 'AMELI', 'IPHONE', 'J-1'],   'BNP PARIBAS'),
-  mc(11, '529941', 'Société Générale Mastercard',   35, 8,  2, 'Mastercard', 'mc', 'SG — Mastercard Standard. Balance testée.',               'CLASSIC', 24, '67000', ['MASTERCARD', 'DEBIT', 'ANDROID', "AUJOURD'HUI"],    'SOCIÉTÉ GÉNÉRALE'),
-  mc(12, '497110', 'La Banque Postale Visa',        12, 0,  1, 'Visa', 'visa', 'La Banque Postale — Visa Classic. Réapprovisionnement 48h.',  'CLASSIC', 23, '16000', ['VISA', 'DEBIT',   "AUJOURD'HUI"],                  'LA BANQUE POSTALE'),
+  mc(1,  '497203', 'Crédit Mutuel Visa Classic',    18, 8,  1, 'Visa', 'visa', 'Crédit Mutuel — Visa Classic. Balance vérifiée, CVV inclus.',  'CLASSIC', 34, '75012', ['VISA','DEBIT',"AUJOURD'HUI"],                  'CRÉDIT MUTUEL',    'VISA',       'DEBIT',  'ANDROID', 'AMELI',  '12/08/1990', '2025-04-15'),
+  mc(2,  '497207', 'Crédit Mutuel Visa Gold',       30, 3,  1, 'Visa', 'visa', 'Crédit Mutuel — Visa Gold. Plafond élevé. CVV + date inclus.', 'GOLD',    48, '69001', ['VISA','CREDIT','AMELI','ANDROID','J-1'],        'CRÉDIT MUTUEL',    'VISA',       'CREDIT', 'ANDROID', 'AMELI',  '03/11/1976', '2025-04-18'),
+  mc(3,  '497208', 'CIC Visa Premier',              45, 5,  1, 'Visa', 'visa', 'CIC — Visa Premier. Fullz disponible sur demande.',            'PLATINUM', 52, '33000', ['VISA','CREDIT','AMELI','IPHONE',"AUJOURD'HUI"], 'CIC',              'VISA',       'CREDIT', 'IPHONE',  'AMELI',  '17/05/1972', '2025-04-20'),
+  mc(4,  '497490', 'Crédit Agricole Visa Classic',  15, 12, 1, 'Visa', 'visa', 'Crédit Agricole — Visa Classic. Testé & valide.',             'CLASSIC', 27, '13001', ['VISA','DEBIT','ANDROID',"AUJOURD'HUI"],          'CRÉDIT AGRICOLE',  'VISA',       'DEBIT',  'ANDROID', 'OTHER', '22/02/1997', '2025-04-22'),
+  mc(5,  '497492', 'Crédit Agricole Visa Premier',  38, 2,  1, 'Visa', 'visa', 'Crédit Agricole — Visa Premier. Stock limité.',               'PLATINUM', 61, '59000', ['VISA','CREDIT','AMELI','IPHONE','J-1'],         'CRÉDIT AGRICOLE',  'VISA',       'CREDIT', 'IPHONE',  'AMELI',  '09/12/1963', '2025-04-25'),
+  mc(6,  '497410', 'LCL Visa Classic',              20, 9,  1, 'Visa', 'visa', 'LCL — Visa Classic. Livraison en moins de 24h.',              'CLASSIC', 38, '44000', ['VISA','DEBIT',"AUJOURD'HUI"],                    'LCL',              'VISA',       'DEBIT',  'UNKNOWN', 'OTHER', '30/06/1986', '2025-04-28'),
+  mc(7,  '497413', 'LCL Visa Premier',              42, 6,  1, 'Visa', 'visa', 'LCL — Visa Premier. Haut plafond. CVV + expiry fournis.',     'PLATINUM', 47, '31000', ['VISA','CREDIT','AMELI','ANDROID',"AUJOURD'HUI"], 'LCL',             'VISA',       'CREDIT', 'ANDROID', 'AMELI',  '14/03/1978', '2025-04-29'),
+  mc(8,  '497974', 'BNP Paribas Visa Premier',      55, 4,  1, 'Visa', 'visa', 'BNP Paribas — Visa Premier. Compte vérifié, solde garanti.',  'PLATINUM', 55, '75008', ['VISA','CREDIT','AMELI','IPHONE','J-1'],         'BNP PARIBAS',      'VISA',       'CREDIT', 'IPHONE',  'AMELI',  '25/09/1969', '2025-05-01'),
+  mc(9,  '498208', 'Société Générale Visa Premier', 48, 7,  1, 'Visa', 'visa', 'Société Générale — Visa Premier. Fullz dispo.',               'PLATINUM', 43, '92100', ['VISA','CREDIT','ANDROID',"AUJOURD'HUI"],         'SOCIÉTÉ GÉNÉRALE', 'VISA',       'CREDIT', 'ANDROID', 'AMAZON', '07/04/1981', '2025-05-02'),
+  mc(10, '534543', 'BNP Paribas Mastercard Gold',   50, 3,  2, 'Mastercard', 'mc', 'BNP Paribas — Mastercard Gold. Solde élevé.',            'GOLD',    39, '06000', ['MASTERCARD','CREDIT','AMELI','IPHONE','J-1'],    'BNP PARIBAS',      'MASTERCARD', 'CREDIT', 'IPHONE',  'AMELI',  '18/07/1985', '2025-04-30'),
+  mc(11, '529941', 'Société Générale Mastercard',   35, 8,  2, 'Mastercard', 'mc', 'SG — Mastercard Standard. Balance testée.',              'CLASSIC', 24, '67000', ['MASTERCARD','DEBIT','ANDROID',"AUJOURD'HUI"],    'SOCIÉTÉ GÉNÉRALE', 'MASTERCARD', 'DEBIT',  'ANDROID', 'OTHER', '05/01/2001', '2025-04-27'),
+  mc(12, '497110', 'La Banque Postale Visa',        12, 0,  1, 'Visa', 'visa', 'La Banque Postale — Visa Classic. Réapprovisionnement 48h.', 'CLASSIC', 23, '16000', ['VISA','DEBIT',"AUJOURD'HUI"],                    'LA BANQUE POSTALE','VISA',       'DEBIT',  'UNKNOWN', 'OTHER', '11/11/2002', '2025-04-10'),
 ]
 
 const BANQUES = ['CRÉDIT MUTUEL', 'CIC', 'CRÉDIT AGRICOLE', 'LCL', 'BNP PARIBAS', 'SOCIÉTÉ GÉNÉRALE', 'LA BANQUE POSTALE']
@@ -97,12 +136,32 @@ export default function Catalogue() {
       return api.get(`/api/products?${params}`).then((r) => r.data)
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !isCards,
   })
 
-  const isLoading = isCards ? false : (catLoading || prodLoading)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const allProducts: MockCard[] = isCards ? MOCK_CARDS : (apiProducts as any[])
+  const isLoading = catLoading || prodLoading
+
+  const allProducts: MockCard[] = isCards
+    ? (apiProducts.length > 0
+        ? apiProducts.map(p => {
+            const m = parseCardMeta(p.description)
+            return {
+              ...p,
+              bin: m.bin,
+              banque: m.bank,
+              niveau: m.level,
+              age: parseInt(m.age) || 0,
+              cp: m.cp,
+              tags: [],
+              network: m.network,
+              cardType: m.type,
+              device: m.device,
+              source: m.source,
+              ddn: m.ddn,
+              recoveryDate: m.recoveryDate,
+            } as MockCard
+          })
+        : MOCK_CARDS)
+    : (apiProducts as any[])
 
   const products = allProducts.filter((p) => {
     const q = search.toLowerCase()
@@ -110,7 +169,12 @@ export default function Catalogue() {
     if (filters.origine && p.category?.slug !== filters.origine) return false
     if (filters.niveau && p.niveau !== filters.niveau) return false
     if (filters.banque && p.banque !== filters.banque) return false
-    if (filters.telephone && !p.tags?.includes(filters.telephone)) return false
+    if (filters.telephone) {
+      // support both new device field and legacy tags
+      const matchesDevice = (p as MockCard).device === filters.telephone
+      const matchesTags = p.tags?.includes(filters.telephone)
+      if (!matchesDevice && !matchesTags) return false
+    }
     if (filters.ageBracket) {
       const bracket = AGE_BRACKETS.find((b) => b.label === filters.ageBracket)
       if (bracket && (p.age < bracket.min || p.age > bracket.max)) return false
@@ -267,8 +331,8 @@ export default function Catalogue() {
               </FilterGroup>
 
               <FilterGroup label="NIVEAU" accent={accent.main}>
-                {[ALL, 'CLASSIC', 'PREMIER', 'GOLD'].map((v) => (
-                  <Pill key={v} label={v || 'TOUS'} active={pending.niveau === v} accent={v === 'GOLD' ? '#fbbf24' : v === 'PREMIER' ? '#a78bfa' : accent.main} onClick={() => setPending((p) => ({ ...p, niveau: v }))} />
+                {[ALL, 'CLASSIC', 'PLATINUM', 'GOLD', 'BLACK'].map((v) => (
+                  <Pill key={v} label={v || 'TOUS'} active={pending.niveau === v} accent={v === 'GOLD' ? '#fbbf24' : v === 'PLATINUM' ? '#a78bfa' : accent.main} onClick={() => setPending((p) => ({ ...p, niveau: v }))} />
                 ))}
               </FilterGroup>
 
@@ -282,7 +346,12 @@ export default function Catalogue() {
               </FilterGroup>
 
               <FilterGroup label="TÉLÉPHONE" accent={accent.main}>
-                {[{ label: 'TOUS', value: ALL }, { label: 'IPHONE', value: 'IPHONE' }, { label: 'ANDROID', value: 'ANDROID' }].map((o) => (
+                {[
+                  { label: 'TOUS',    value: ALL },
+                  { label: 'IPHONE',  value: 'IPHONE' },
+                  { label: 'ANDROID', value: 'ANDROID' },
+                  { label: 'UNKNOWN', value: 'UNKNOWN' },
+                ].map((o) => (
                   <Pill key={o.value} label={o.label} active={pending.telephone === o.value} accent={o.value === 'IPHONE' ? '#9ca3af' : o.value === 'ANDROID' ? '#22d3ee' : accent.main} onClick={() => setPending((p) => ({ ...p, telephone: o.value }))} />
                 ))}
               </FilterGroup>
