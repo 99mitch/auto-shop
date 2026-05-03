@@ -45,7 +45,7 @@ export const UpdateOrderStatusSchema = z.object({
 })
 
 export const CreateProductSchema = z.object({
-  categoryId: z.number().int().positive(),
+  categoryId: z.number().int().positive().optional().nullable(),
   name: z.string().min(1),
   description: z.string().min(1),
   price: z.number().positive(),
@@ -61,6 +61,11 @@ export const UpdateSettingsSchema = z.object({
   deliveryFee: z.number().min(0).optional(),
   timeSlots: z.array(z.string()).optional(),
 })
+
+export const BulkInventorySchema = z.object({
+  lines: z.array(z.string().min(13)).min(1).max(500),
+})
+export type BulkInventoryInput = z.infer<typeof BulkInventorySchema>
 
 export type CreateOrderInput = z.infer<typeof CreateOrderSchema>
 export type CreateAddressInput = z.infer<typeof CreateAddressSchema>

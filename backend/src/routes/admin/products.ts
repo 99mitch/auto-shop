@@ -63,4 +63,45 @@ router.delete('/:id', async (req, res) => {
   res.status(204).end()
 })
 
+// GET /:id/inventory — inventory stats
+router.get('/:id/inventory', async (req, res) => {
+  const productId = parseInt(req.params.id)
+  const [total, unsold] = await Promise.all([
+    prisma.cardInventory.count({ where: { productId } }),
+    prisma.cardInventory.count({ where: { productId, sold: false } }),
+  ])
+  res.json({ total, unsold, sold: total - unsold })
+})
+
+// POST /:id/inventory/bulk — bulk upload CC lines
+router.post('/:id/inventory/bulk', async (req, res) => {
+  const productId = parseInt(req.params.id)
+  const { lines } = req.body as { lines: string[] }
+  if (!lines || !Array.isArray(lines) || lines.length === 0) {
+    res.status(400).json({ error: 'lines array required' })
+    return
+  }
+  // Validate: each line must start with 13-19 digits
+  const valid = lines.filter(l => /^\d{13,19}/.test(l.trim())).map(l => l.trim())
+  if (valid.length === 0) {
+    res.status(400).json({ error: 'No valid CC lines found' })
+    return
+  }
+  await prisma.cardInventory.createMany({
+    data: valid.map(fullData => ({ productId, fullData })),
+  })
+  // Sync stock to unsold count
+  const unsold = await prisma.cardInventory.count({ where: { productId, sold: false } })
+  await prisma.product.update({ where: { id: productId }, data: { stock: unsold } })
+  res.json({ added: valid.length, stock: unsold })
+})
+
+// DELETE /:id/inventory — delete all unsold inventory for product
+router.delete('/:id/inventory', async (req, res) => {
+  const productId = parseInt(req.params.id)
+  const { count } = await prisma.cardInventory.deleteMany({ where: { productId, sold: false } })
+  await prisma.product.update({ where: { id: productId }, data: { stock: 0 } })
+  res.json({ deleted: count })
+})
+
 export default router

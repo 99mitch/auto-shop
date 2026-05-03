@@ -45,8 +45,8 @@ model Category {
 
 model Product {
   id             Int                   @id @default(autoincrement())
-  categoryId     Int
-  category       Category              @relation(fields: [categoryId], references: [id])
+  categoryId     Int?
+  category       Category?             @relation(fields: [categoryId], references: [id])
   name           String
   description    String
   price          Float
@@ -58,23 +58,25 @@ model Product {
   collaborator   User?                 @relation("CollaboratorProducts", fields: [collaboratorId], references: [id])
   orderItems     OrderItem[]
   favorites      Favorite[]
+  cardInventory  CardInventory[]
 }
 
 model Order {
-  id           Int                   @id @default(autoincrement())
-  userId       Int
-  user         User                  @relation(fields: [userId], references: [id])
-  addressId    Int?
-  address      Address?              @relation(fields: [addressId], references: [id])
-  status       String                @default("PENDING")
-  note         String?
-  subtotal     Float
-  deliveryFee  Float
-  total        Float
-  deliverySlot String
-  createdAt    DateTime              @default(now())
-  items        OrderItem[]
-  earnings     CollaboratorEarning[]
+  id            Int                   @id @default(autoincrement())
+  userId        Int
+  user          User                  @relation(fields: [userId], references: [id])
+  addressId     Int?
+  address       Address?              @relation(fields: [addressId], references: [id])
+  status        String                @default("PENDING")
+  note          String?
+  subtotal      Float
+  deliveryFee   Float
+  total         Float
+  deliverySlot  String
+  createdAt     DateTime              @default(now())
+  items         OrderItem[]
+  earnings      CollaboratorEarning[]
+  cardInventory CardInventory[]
 }
 
 model OrderItem {
@@ -115,4 +117,15 @@ model Favorite {
 model Setting {
   key   String @id
   value String
+}
+
+model CardInventory {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  fullData  String
+  sold      Boolean  @default(false)
+  orderId   Int?
+  order     Order?   @relation(fields: [orderId], references: [id])
+  createdAt DateTime @default(now())
 }

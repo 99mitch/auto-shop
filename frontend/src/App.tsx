@@ -20,6 +20,7 @@ import AdminSettings from './pages/admin/AdminSettings'
 import AdminCollaborators from './pages/admin/AdminCollaborators'
 import CollabDashboard from './pages/collab/CollabDashboard'
 import CollabGuard from './pages/collab/CollabGuard'
+import CollabAddCard from './pages/collab/CollabAddCard'
 
 const router = createBrowserRouter([
   {
@@ -40,6 +41,8 @@ const router = createBrowserRouter([
         element: <CollabGuard />,
         children: [
           { index: true, element: <CollabDashboard /> },
+          { path: 'add', element: <CollabAddCard /> },
+          { path: 'edit/:id', element: <CollabAddCard /> },
         ],
       },
       {

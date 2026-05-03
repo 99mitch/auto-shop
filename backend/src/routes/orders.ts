@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { prisma } from '../prisma'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { CreateOrderSchema } from 'floramini-types'
-import { notifyOrderStatus } from '../lib/notify'
+import { notifyOrderStatus, deliverCards } from '../lib/notify'
 
 const router = Router()
 
@@ -134,7 +134,7 @@ router.post('/:id/pay', async (req: AuthRequest, res) => {
 
   const order = await prisma.order.findFirst({
     where: { id, userId: req.userId!, status: 'PENDING' },
-    include: { items: { include: { product: { select: { collaboratorId: true } } } } },
+    include: { items: { include: { product: { select: { collaboratorId: true, name: true } } } } },
   })
 
   if (!order) {
@@ -165,6 +165,27 @@ router.post('/:id/pay', async (req: AuthRequest, res) => {
   if (earningsToCreate.length > 0) {
     await prisma.collaboratorEarning.createMany({ data: earningsToCreate })
   }
+
+  // Deliver CC inventory items
+  const deliveryCards: Array<{ productName: string; data: string }> = []
+  for (const item of order.items) {
+    const invItems = await prisma.cardInventory.findMany({
+      where: { productId: item.productId, sold: false },
+      take: item.quantity,
+      orderBy: { id: 'asc' },
+    })
+    if (invItems.length > 0) {
+      await prisma.cardInventory.updateMany({
+        where: { id: { in: invItems.map(i => i.id) } },
+        data: { sold: true, orderId: order.id },
+      })
+      // Sync stock
+      const remaining = await prisma.cardInventory.count({ where: { productId: item.productId, sold: false } })
+      await prisma.product.update({ where: { id: item.productId }, data: { stock: remaining } })
+      invItems.forEach(inv => deliveryCards.push({ productName: (item as any).product?.name ?? 'Carte', data: inv.fullData }))
+    }
+  }
+  await deliverCards(req.telegramId!, order.id, deliveryCards)
 
   notifyOrderStatus(req.telegramId!, order.id, 'CONFIRMED', order.total)
 

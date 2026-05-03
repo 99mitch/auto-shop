@@ -36,9 +36,24 @@ export interface Category {
   order: number
 }
 
+export interface CardInventory {
+  id: number
+  productId: number
+  fullData: string
+  sold: boolean
+  orderId: number | null
+  createdAt: string
+}
+
+export interface InventoryStats {
+  total: number
+  unsold: number
+  sold: number
+}
+
 export interface Product {
   id: number
-  categoryId: number
+  categoryId: number | null
   category?: Category
   name: string
   description: string

@@ -28,6 +28,12 @@ interface ProductForm {
   isActive: boolean
 }
 
+interface InventoryStats {
+  total: number
+  unsold: number
+  sold: number
+}
+
 const AVAILABLE_TAGS = ['CREDIT', 'DEBIT', 'IPHONE', 'ANDROID', 'AMELI']
 const LEVELS: CardLevel[] = ['CLASSIC', 'GOLD', 'PLATINUM', 'BLACK']
 
@@ -62,6 +68,235 @@ const labelStyle: React.CSSProperties = {
   fontSize: 8, fontWeight: 700, letterSpacing: '0.2em',
   color: 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono",monospace',
   textTransform: 'uppercase', marginBottom: 5, display: 'block',
+}
+
+// ── InventoryPanel component ───────────────────────────────────────────────────
+function InventoryPanel({ productId }: { productId: number }) {
+  const queryClient = useQueryClient()
+  const [text, setText] = useState('')
+  const [uploadResult, setUploadResult] = useState<{ added: number; stock: number } | null>(null)
+  const [uploadErr, setUploadErr] = useState<string | null>(null)
+  const [clearConfirm, setClearConfirm] = useState(false)
+
+  const { data: inv, isLoading } = useQuery<InventoryStats>({
+    queryKey: ['admin-inventory', productId],
+    queryFn: () => api.get(`/api/admin/products/${productId}/inventory`).then(r => r.data),
+    staleTime: 30_000,
+  })
+
+  const validLines = text.split('\n').filter(l => /^\d{13,19}/.test(l.trim()))
+
+  const uploadMutation = useMutation({
+    mutationFn: () => api.post(`/api/admin/products/${productId}/inventory/bulk`, {
+      lines: text.split('\n').filter(l => l.trim()),
+    }).then(r => r.data),
+    onSuccess: (data) => {
+      setUploadResult(data)
+      setUploadErr(null)
+      setText('')
+      queryClient.invalidateQueries({ queryKey: ['admin-inventory', productId] })
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+    },
+    onError: (e: any) => setUploadErr(e?.response?.data?.error ?? 'Erreur upload'),
+  })
+
+  const clearMutation = useMutation({
+    mutationFn: () => api.delete(`/api/admin/products/${productId}/inventory`).then(r => r.data),
+    onSuccess: () => {
+      setClearConfirm(false)
+      setUploadResult(null)
+      queryClient.invalidateQueries({ queryKey: ['admin-inventory', productId] })
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+    },
+  })
+
+  return (
+    <div style={{ padding: '10px 12px 12px', borderTop: '1px solid rgba(251,191,36,0.08)', background: 'rgba(251,191,36,0.015)' }}>
+      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(251,191,36,0.45)', fontFamily: '"JetBrains Mono",monospace', textTransform: 'uppercase', marginBottom: 8 }}>
+        INVENTAIRE CC
+      </div>
+
+      {/* Stats row */}
+      {isLoading ? (
+        <div style={{ height: 20, background: 'rgba(255,255,255,0.04)', borderRadius: 5, marginBottom: 8, opacity: 0.5 }} />
+      ) : inv ? (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <div style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', padding: '4px 9px', borderRadius: 5, background: inv.unsold > 0 ? 'rgba(74,222,128,0.07)' : 'rgba(239,68,68,0.07)', border: `1px solid ${inv.unsold > 0 ? 'rgba(74,222,128,0.18)' : 'rgba(239,68,68,0.18)'}`, color: inv.unsold > 0 ? 'rgba(74,222,128,0.9)' : 'rgba(239,68,68,0.7)' }}>
+            {inv.unsold} dispo
+          </div>
+          <div style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', padding: '4px 9px', borderRadius: 5, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }}>
+            {inv.sold} vendues
+          </div>
+          <div style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', padding: '4px 9px', borderRadius: 5, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.25)' }}>
+            {inv.total} total
+          </div>
+        </div>
+      ) : null}
+
+      {/* Format hint */}
+      <div style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', color: 'rgba(255,255,255,0.18)', marginBottom: 6 }}>
+        Format: 4567890123456789|12/26|123|John Doe|75 Rue de Rivoli|75001|France
+      </div>
+
+      {/* Textarea */}
+      <textarea
+        value={text}
+        onChange={e => { setText(e.target.value); setUploadResult(null) }}
+        placeholder={'4111111111111111|12/26|123|Jean Dupont|75001|France\n5500005555555559|01/27|456|Marie Martin|69001|France'}
+        style={{
+          width: '100%', minHeight: 80, background: '#1a1a1a',
+          border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8,
+          color: '#fff', fontSize: 11, fontFamily: '"JetBrains Mono",monospace',
+          padding: '8px 10px', resize: 'vertical', outline: 'none', boxSizing: 'border-box',
+        }}
+      />
+
+      {/* Valid lines count + upload button */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+        <span style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', color: validLines.length > 0 ? 'rgba(74,222,128,0.7)' : 'rgba(255,255,255,0.2)' }}>
+          {validLines.length} ligne{validLines.length !== 1 ? 's' : ''} valide{validLines.length !== 1 ? 's' : ''}
+        </span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {/* VIDER STOCK */}
+          {inv && inv.unsold > 0 && (
+            clearConfirm ? (
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                <span style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', color: 'rgba(239,68,68,0.7)' }}>Vider ?</span>
+                <button
+                  onClick={() => clearMutation.mutate()}
+                  disabled={clearMutation.isPending}
+                  style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 9, fontFamily: '"JetBrains Mono",monospace', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {clearMutation.isPending ? '...' : 'OUI'}
+                </button>
+                <button
+                  onClick={() => setClearConfirm(false)}
+                  style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)', fontSize: 9, fontFamily: '"JetBrains Mono",monospace', cursor: 'pointer' }}
+                >
+                  NON
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setClearConfirm(true)}
+                style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 9, fontFamily: '"JetBrains Mono",monospace', fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer' }}
+              >
+                VIDER STOCK
+              </button>
+            )
+          )}
+          <button
+            onClick={() => uploadMutation.mutate()}
+            disabled={uploadMutation.isPending || validLines.length === 0}
+            style={{ padding: '5px 12px', borderRadius: 6, background: validLines.length > 0 ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${validLines.length > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.07)'}`, color: validLines.length > 0 ? '#fbbf24' : 'rgba(255,255,255,0.2)', fontSize: 10, fontFamily: '"JetBrains Mono",monospace', fontWeight: 700, letterSpacing: '0.08em', cursor: uploadMutation.isPending || validLines.length === 0 ? 'not-allowed' : 'pointer' }}
+          >
+            {uploadMutation.isPending ? '...' : 'UPLOAD'}
+          </button>
+        </div>
+      </div>
+
+      {/* Results */}
+      {uploadResult && (
+        <div style={{ marginTop: 7, fontSize: 10, fontFamily: '"JetBrains Mono",monospace', color: 'rgba(74,222,128,0.9)', padding: '5px 9px', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)', borderRadius: 6 }}>
+          +{uploadResult.added} carte{uploadResult.added !== 1 ? 's' : ''} · stock: {uploadResult.stock}
+        </div>
+      )}
+      {uploadErr && (
+        <div style={{ marginTop: 7, fontSize: 10, fontFamily: '"JetBrains Mono",monospace', color: '#ef4444', padding: '5px 9px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6 }}>
+          {uploadErr}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── ProductCard with inventory section ────────────────────────────────────────
+function ProductCard({
+  p, onEdit, confirmDelete, onConfirmDelete, onCancelDelete, onDelete, deleting,
+}: {
+  p: Product
+  onEdit: () => void
+  confirmDelete: boolean
+  onConfirmDelete: () => void
+  onCancelDelete: () => void
+  onDelete: () => void
+  deleting: boolean
+}) {
+  const meta = parseCardMeta(p)
+  const lc = LEVEL_COLORS[meta.level] ?? LEVEL_COLORS.CLASSIC
+  const [showInventory, setShowInventory] = useState(false)
+
+  const { data: inv } = useQuery<InventoryStats>({
+    queryKey: ['admin-inventory', p.id],
+    queryFn: () => api.get(`/api/admin/products/${p.id}/inventory`).then(r => r.data),
+    staleTime: 30_000,
+  })
+
+  return (
+    <div style={{ background: '#111', borderRadius: 14, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px' }}>
+        {/* Card image */}
+        <div style={{ width: 52, height: 33, borderRadius: 6, overflow: 'hidden', background: '#1a1a1a', flexShrink: 0, border: '1px solid rgba(255,255,255,0.06)' }}>
+          {meta.bin ? (
+            <img src={`https://cardimages.imaginecurve.com/cards/${meta.bin.slice(0, 6)}.png`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).src = ''; (e.target as HTMLImageElement).style.display = 'none' }} />
+          ) : null}
+        </div>
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: p.isActive ? '#fff' : 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.03em' }}>{meta.bank || p.name}</span>
+            <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: lc.bg, color: lc.text, border: `1px solid ${lc.border}`, fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.06em' }}>{meta.level}</span>
+            {!p.isActive && <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', fontFamily: '"JetBrains Mono",monospace' }}>OFF</span>}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10, color: '#fbbf24', fontFamily: '"JetBrains Mono",monospace' }}>€{Number(p.price).toFixed(2)}</span>
+            {meta.bin && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono",monospace' }}>BIN {meta.bin}</span>}
+            {inv ? (
+              <span style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', color: inv.unsold > 0 ? 'rgba(74,222,128,0.7)' : 'rgba(239,68,68,0.6)' }}>
+                {inv.unsold} dispo · {inv.sold} vendues
+              </span>
+            ) : (
+              <span style={{ fontSize: 9, color: p.stock > 0 ? 'rgba(74,222,128,0.7)' : 'rgba(239,68,68,0.6)', fontFamily: '"JetBrains Mono",monospace' }}>{p.stock > 0 ? `×${p.stock}` : 'ÉPUISÉ'}</span>
+            )}
+          </div>
+        </div>
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 5, flexShrink: 0, flexDirection: 'column', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: 5 }}>
+            <button onClick={onEdit} style={{ padding: '5px 10px', borderRadius: 7, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24', fontSize: 10, fontFamily: '"JetBrains Mono",monospace', cursor: 'pointer' }}>EDIT</button>
+            <button onClick={onConfirmDelete} style={{ padding: '5px 10px', borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 10, fontFamily: '"JetBrains Mono",monospace', cursor: 'pointer' }}>✕</button>
+          </div>
+          <button
+            onClick={() => setShowInventory(v => !v)}
+            style={{ padding: '4px 10px', borderRadius: 7, background: showInventory ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${showInventory ? 'rgba(251,191,36,0.25)' : 'rgba(255,255,255,0.07)'}`, color: showInventory ? '#fbbf24' : 'rgba(255,255,255,0.3)', fontSize: 9, fontFamily: '"JetBrains Mono",monospace', fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer' }}
+          >
+            INVENTAIRE
+          </button>
+        </div>
+      </div>
+
+      {/* Tags row */}
+      {meta.tags.length > 0 && (
+        <div style={{ display: 'flex', gap: 4, padding: '0 12px 8px', flexWrap: 'wrap' }}>
+          {meta.tags.map(t => <span key={t} style={{ fontSize: 8, padding: '2px 7px', borderRadius: 20, background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono",monospace', border: '1px solid rgba(255,255,255,0.06)' }}>{t}</span>)}
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      {confirmDelete && (
+        <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 10, color: 'rgba(239,68,68,0.8)', fontFamily: '"JetBrains Mono",monospace' }}>SUPPRIMER DÉFINITIVEMENT ?</span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={onCancelDelete} style={{ padding: '4px 10px', borderRadius: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.3)', fontSize: 10, fontFamily: '"JetBrains Mono",monospace', cursor: 'pointer' }}>NON</button>
+            <button onClick={onDelete} disabled={deleting} style={{ padding: '4px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 10, fontFamily: '"JetBrains Mono",monospace', cursor: 'pointer' }}>{deleting ? '...' : 'OUI'}</button>
+          </div>
+        </div>
+      )}
+
+      {/* Inventory panel */}
+      {showInventory && <InventoryPanel productId={p.id} />}
+    </div>
+  )
 }
 
 export default function AdminProducts() {
@@ -119,7 +354,7 @@ export default function AdminProducts() {
   function startEdit(p: Product) {
     const meta = parseCardMeta(p)
     setEditingId(p.id)
-    setForm({ bin: meta.bin, bank: meta.bank, level: meta.level, prix: String(p.price), stock: String(p.stock), cp: meta.cp, age: meta.age, tags: meta.tags, categoryId: p.categoryId, isActive: p.isActive })
+    setForm({ bin: meta.bin, bank: meta.bank, level: meta.level, prix: String(p.price), stock: String(p.stock), cp: meta.cp, age: meta.age, tags: meta.tags, categoryId: p.categoryId ?? 0, isActive: p.isActive })
     setShowForm(true)
     setTimeout(() => document.getElementById('products-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
@@ -268,61 +503,23 @@ export default function AdminProducts() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {products.map(p => {
-              const meta = parseCardMeta(p)
-              const lc = LEVEL_COLORS[meta.level] ?? LEVEL_COLORS.CLASSIC
-              return (
-                <div key={p.id} style={{ background: '#111', borderRadius: 14, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px' }}>
-                    {/* Card image */}
-                    <div style={{ width: 52, height: 33, borderRadius: 6, overflow: 'hidden', background: '#1a1a1a', flexShrink: 0, border: '1px solid rgba(255,255,255,0.06)' }}>
-                      {meta.bin ? (
-                        <img src={`https://cardimages.imaginecurve.com/cards/${meta.bin.slice(0, 6)}.png`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).src = ''; (e.target as HTMLImageElement).style.display = 'none' }} />
-                      ) : null}
-                    </div>
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: p.isActive ? '#fff' : 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.03em' }}>{meta.bank || p.name}</span>
-                        <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: lc.bg, color: lc.text, border: `1px solid ${lc.border}`, fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.06em' }}>{meta.level}</span>
-                        {!p.isActive && <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', fontFamily: '"JetBrains Mono",monospace' }}>OFF</span>}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 10, color: '#fbbf24', fontFamily: '"JetBrains Mono",monospace' }}>€{Number(p.price).toFixed(2)}</span>
-                        {meta.bin && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono",monospace' }}>BIN {meta.bin}</span>}
-                        <span style={{ fontSize: 9, color: p.stock > 0 ? 'rgba(74,222,128,0.7)' : 'rgba(239,68,68,0.6)', fontFamily: '"JetBrains Mono",monospace' }}>{p.stock > 0 ? `×${p.stock}` : 'ÉPUISÉ'}</span>
-                      </div>
-                    </div>
-                    {/* Actions */}
-                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      <button onClick={() => startEdit(p)} style={{ padding: '5px 10px', borderRadius: 7, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24', fontSize: 10, fontFamily: '"JetBrains Mono",monospace', cursor: 'pointer' }}>EDIT</button>
-                      <button onClick={() => setConfirmDelete(confirmDelete === p.id ? null : p.id)} style={{ padding: '5px 10px', borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 10, fontFamily: '"JetBrains Mono",monospace', cursor: 'pointer' }}>✕</button>
-                    </div>
-                  </div>
-                  {/* Tags row */}
-                  {meta.tags.length > 0 && (
-                    <div style={{ display: 'flex', gap: 4, padding: '0 12px 8px', flexWrap: 'wrap' }}>
-                      {meta.tags.map(t => <span key={t} style={{ fontSize: 8, padding: '2px 7px', borderRadius: 20, background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono",monospace', border: '1px solid rgba(255,255,255,0.06)' }}>{t}</span>)}
-                    </div>
-                  )}
-                  {/* Delete confirm */}
-                  {confirmDelete === p.id && (
-                    <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 10, color: 'rgba(239,68,68,0.8)', fontFamily: '"JetBrains Mono",monospace' }}>SUPPRIMER DÉFINITIVEMENT ?</span>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => setConfirmDelete(null)} style={{ padding: '4px 10px', borderRadius: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.3)', fontSize: 10, fontFamily: '"JetBrains Mono",monospace', cursor: 'pointer' }}>NON</button>
-                        <button onClick={() => deleteProduct.mutate(p.id)} style={{ padding: '4px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 10, fontFamily: '"JetBrains Mono",monospace', cursor: 'pointer' }}>OUI</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+            {products.map(p => (
+              <ProductCard
+                key={p.id}
+                p={p}
+                onEdit={() => startEdit(p)}
+                confirmDelete={confirmDelete === p.id}
+                onConfirmDelete={() => setConfirmDelete(p.id)}
+                onCancelDelete={() => setConfirmDelete(null)}
+                onDelete={() => deleteProduct.mutate(p.id)}
+                deleting={deleteProduct.isPending && confirmDelete === p.id}
+              />
+            ))}
           </div>
         )}
       </div>
 
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap'); select option { background: #1a1a1a; color: #fff; }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap'); select option { background: #1a1a1a; color: #fff; } textarea { resize: vertical; } textarea::placeholder { color: rgba(255,255,255,0.15); }`}</style>
     </div>
   )
 }

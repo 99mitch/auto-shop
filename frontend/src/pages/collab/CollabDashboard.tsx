@@ -22,7 +22,13 @@ interface CollabStats {
 
 interface CollabProduct {
   id: number; name: string; description: string; price: number; stock: number
-  imageUrl: string; isActive: boolean; categoryId: number; collaboratorId: number | null
+  imageUrl: string; isActive: boolean; categoryId: number | null; collaboratorId: number | null
+}
+
+interface InventoryStats {
+  total: number
+  unsold: number
+  sold: number
 }
 
 type CardLevel = 'CLASSIC' | 'GOLD' | 'PLATINUM' | 'BLACK'
@@ -43,14 +49,7 @@ const LABEL_STYLE: React.CSSProperties = {
   fontSize: 8, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.22)',
   fontFamily: '"JetBrains Mono", monospace', textTransform: 'uppercase' as const,
 }
-const INPUT_STYLE: React.CSSProperties = {
-  width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: 9, padding: '9px 12px', color: '#fff', fontSize: 13,
-  fontFamily: '"JetBrains Mono", monospace', outline: 'none', boxSizing: 'border-box' as const,
-}
 
-const AVAILABLE_TAGS = ['CREDIT', 'DEBIT', 'IPHONE', 'ANDROID', 'AMELI']
-const LEVELS: CardLevel[] = ['CLASSIC', 'GOLD', 'PLATINUM', 'BLACK']
 const LEVEL_COLORS: Record<CardLevel, { bg: string; text: string; border: string }> = {
   CLASSIC:  { bg: 'rgba(156,163,175,0.12)', text: '#9ca3af', border: 'rgba(156,163,175,0.25)' },
   GOLD:     { bg: 'rgba(251,191,36,0.12)',  text: '#fbbf24', border: 'rgba(251,191,36,0.35)' },
@@ -58,129 +57,167 @@ const LEVEL_COLORS: Record<CardLevel, { bg: string; text: string; border: string
   BLACK:    { bg: 'rgba(255,255,255,0.06)', text: '#fff',    border: 'rgba(255,255,255,0.18)' },
 }
 
-const emptyCardForm = (): CardForm => ({
-  bin: '', bank: '', level: 'CLASSIC', prix: '', stock: '1', cp: '', age: '', tags: [], categoryId: 0,
-})
-
 function parseCardMeta(p: CollabProduct): CardForm {
   try {
     const m = JSON.parse(p.description || '{}')
-    return { bin: m.bin ?? '', bank: m.bank ?? '', level: m.level ?? 'CLASSIC', prix: String(p.price), stock: String(p.stock), cp: m.cp ?? '', age: m.age ?? '', tags: m.tags ?? [], categoryId: p.categoryId }
+    return { bin: m.bin ?? '', bank: m.bank ?? '', level: m.level ?? 'CLASSIC', prix: String(p.price), stock: String(p.stock), cp: m.cp ?? '', age: m.age ?? '', tags: m.tags ?? [], categoryId: p.categoryId ?? 0 }
   } catch {
-    return { ...emptyCardForm(), prix: String(p.price), stock: String(p.stock), categoryId: p.categoryId }
+    return { bin: '', bank: '', level: 'CLASSIC', prix: String(p.price), stock: String(p.stock), cp: '', age: '', tags: [], categoryId: p.categoryId ?? 0 }
   }
 }
 
-function buildProductPayload(form: CardForm) {
-  return {
-    name: `${form.bank} ${form.level}`,
-    description: JSON.stringify({ bin: form.bin, bank: form.bank, level: form.level, cp: form.cp, age: form.age, tags: form.tags }),
-    price: parseFloat(form.prix),
-    stock: parseInt(form.stock) || 0,
-    categoryId: form.categoryId || undefined,
-    imageUrl: form.bin.length >= 6 ? `https://cardimages.imaginecurve.com/cards/${form.bin.slice(0, 6)}.png` : '',
-    images: [],
-  }
+// ── BulkUpload per-product panel ───────────────────────────────────────────────
+function BulkUploadPanel({ productId, onDone }: { productId: number; onDone: () => void }) {
+  const [text, setText] = useState('')
+  const [result, setResult] = useState<{ added: number; stock: number } | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  const validLines = text.split('\n').filter(l => /^\d{13,19}/.test(l.trim()))
+
+  const upload = useMutation({
+    mutationFn: () => api.post(`/api/collab/products/${productId}/inventory/bulk`, {
+      lines: text.split('\n').filter(l => l.trim()),
+    }).then(r => r.data),
+    onSuccess: (data) => {
+      setResult(data)
+      setText('')
+      setErr(null)
+      onDone()
+    },
+    onError: (e: any) => setErr(e?.response?.data?.error ?? 'Erreur upload'),
+  })
+
+  return (
+    <div style={{ padding: '10px 14px 12px', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(251,191,36,0.02)' }}>
+      <div style={{ ...LABEL_STYLE, color: 'rgba(251,191,36,0.4)', marginBottom: 7 }}>BULK UPLOAD CC</div>
+      <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.2)', marginBottom: 7 }}>
+        Format: 4567890123456789|12/26|123|John Doe|75001|France — une ligne par carte
+      </div>
+      <textarea
+        value={text}
+        onChange={e => { setText(e.target.value); setResult(null) }}
+        placeholder={'4111111111111111|12/26|123|Jean Dupont|75001|France\n5500005555555559|01/27|456|Marie Martin|69001|France'}
+        style={{
+          width: '100%', minHeight: 90, background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
+          color: '#fff', fontSize: 11, ...MONO, padding: '8px 10px',
+          resize: 'vertical', outline: 'none', boxSizing: 'border-box',
+        }}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
+        <span style={{ fontSize: 9, ...MONO, color: validLines.length > 0 ? 'rgba(74,222,128,0.7)' : 'rgba(255,255,255,0.2)' }}>
+          {validLines.length} ligne{validLines.length !== 1 ? 's' : ''} valide{validLines.length !== 1 ? 's' : ''}
+        </span>
+        <button
+          onClick={() => upload.mutate()}
+          disabled={upload.isPending || validLines.length === 0}
+          style={{
+            padding: '6px 14px', borderRadius: 7,
+            background: validLines.length > 0 ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${validLines.length > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.07)'}`,
+            color: validLines.length > 0 ? GOLD : 'rgba(255,255,255,0.2)',
+            fontSize: 10, ...BEBAS, letterSpacing: '0.08em',
+            cursor: upload.isPending || validLines.length === 0 ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {upload.isPending ? '...' : 'UPLOAD'}
+        </button>
+      </div>
+      {result && (
+        <div style={{ marginTop: 7, fontSize: 10, ...MONO, color: SUCCESS, padding: '5px 9px', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)', borderRadius: 6 }}>
+          +{result.added} carte{result.added !== 1 ? 's' : ''} ajoutée{result.added !== 1 ? 's' : ''} · stock: {result.stock}
+        </div>
+      )}
+      {err && (
+        <div style={{ marginTop: 7, fontSize: 10, ...MONO, color: DANGER, padding: '5px 9px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6 }}>
+          {err}
+        </div>
+      )}
+    </div>
+  )
 }
 
-// ── Card form component ────────────────────────────────────────────────────────
-function CardFormFields({ form, onChange, categories }: {
-  form: CardForm
-  onChange: (f: CardForm) => void
-  categories: Category[]
+// ── ProductRow with inventory stats ───────────────────────────────────────────
+function ProductRow({
+  p, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete, deleting,
+}: {
+  p: CollabProduct
+  onEdit: () => void
+  onDelete: () => void
+  confirmDelete: boolean
+  onConfirmDelete: () => void
+  onCancelDelete: () => void
+  deleting: boolean
 }) {
-  function set(patch: Partial<CardForm>) { onChange({ ...form, ...patch }) }
-  function toggleTag(tag: string) {
-    set({ tags: form.tags.includes(tag) ? form.tags.filter(t => t !== tag) : [...form.tags, tag] })
+  const meta = parseCardMeta(p)
+  const lc = LEVEL_COLORS[meta.level] ?? LEVEL_COLORS.CLASSIC
+  const queryClient = useQueryClient()
+
+  const [showBulk, setShowBulk] = useState(false)
+
+  const { data: inv } = useQuery<InventoryStats>({
+    queryKey: ['collab-inventory', p.id],
+    queryFn: () => api.get(`/api/collab/products/${p.id}/inventory`).then(r => r.data),
+    staleTime: 30_000,
+  })
+
+  function handleBulkDone() {
+    queryClient.invalidateQueries({ queryKey: ['collab-inventory', p.id] })
+    queryClient.invalidateQueries({ queryKey: ['collab-products'] })
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* BIN + Bank */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <div>
-          <div style={{ ...LABEL_STYLE, marginBottom: 5 }}>BIN (6 chiffres)</div>
-          <input style={INPUT_STYLE} value={form.bin} onChange={e => set({ bin: e.target.value.replace(/\D/g, '').slice(0, 6) })} placeholder="456789" inputMode="numeric" maxLength={6} />
+    <div>
+      <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Thumbnail */}
+        <div style={{ width: 52, height: 33, borderRadius: 6, overflow: 'hidden', background: 'rgba(255,255,255,0.06)', flexShrink: 0, border: '1px solid rgba(255,255,255,0.06)' }}>
+          {p.imageUrl ? <img src={p.imageUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} /> : null}
         </div>
-        <div>
-          <div style={{ ...LABEL_STYLE, marginBottom: 5 }}>Banque</div>
-          <input style={INPUT_STYLE} value={form.bank} onChange={e => set({ bank: e.target.value })} placeholder="BNP Paribas" />
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+            <span style={{ color: p.isActive ? '#fff' : 'rgba(255,255,255,0.3)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta.bank || p.name}</span>
+            <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 4, background: lc.bg, color: lc.text, border: `1px solid ${lc.border}`, ...MONO, letterSpacing: '0.06em', flexShrink: 0 }}>{meta.level}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ ...MONO, fontSize: 11, color: GOLD }}>€{Number(p.price).toFixed(2)}</span>
+            {meta.bin && <span style={{ ...MONO, fontSize: 9, color: 'rgba(255,255,255,0.2)' }}>BIN {meta.bin}</span>}
+            {inv ? (
+              <span style={{ ...MONO, fontSize: 9, color: inv.unsold > 0 ? SUCCESS : DANGER, background: inv.unsold > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${inv.unsold > 0 ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 4, padding: '1px 5px' }}>
+                {inv.unsold} dispo · {inv.sold} vendues
+              </span>
+            ) : (
+              <span style={{ ...MONO, fontSize: 9, color: p.stock > 0 ? SUCCESS : DANGER, background: p.stock > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${p.stock > 0 ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 4, padding: '1px 5px' }}>
+                {p.stock > 0 ? `×${p.stock}` : 'ÉPUISÉ'}
+              </span>
+            )}
+          </div>
         </div>
+        {/* Actions */}
+        {confirmDelete ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+            <div style={{ ...LABEL_STYLE, color: DANGER }}>CONFIRMER ?</div>
+            <div style={{ display: 'flex', gap: 5 }}>
+              <button onClick={onDelete} disabled={deleting} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: DANGER, borderRadius: 7, padding: '5px 10px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>{deleting ? '...' : 'OUI'}</button>
+              <button onClick={onCancelDelete} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', borderRadius: 7, padding: '5px 10px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>NON</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 5, flexShrink: 0, flexDirection: 'column', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 5 }}>
+              <button onClick={onEdit} style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: GOLD, borderRadius: 7, padding: '5px 9px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>MODIFIER</button>
+              <button onClick={onConfirmDelete} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: DANGER, borderRadius: 7, padding: '5px 9px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>SUPPR.</button>
+            </div>
+            <button
+              onClick={() => setShowBulk(v => !v)}
+              style={{ background: showBulk ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${showBulk ? 'rgba(251,191,36,0.25)' : 'rgba(255,255,255,0.08)'}`, color: showBulk ? GOLD : 'rgba(255,255,255,0.35)', borderRadius: 7, padding: '4px 9px', fontSize: 9, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}
+            >
+              BULK
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* BIN preview */}
-      {form.bin.length >= 6 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: 'rgba(251,191,36,0.04)', borderRadius: 9, border: '1px solid rgba(251,191,36,0.1)' }}>
-          <img src={`https://cardimages.imaginecurve.com/cards/${form.bin.slice(0, 6)}.png`} alt="" style={{ width: 46, height: 29, objectFit: 'cover', borderRadius: 4 }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-          <span style={{ fontSize: 9, color: 'rgba(251,191,36,0.5)', ...MONO }}>IMAGE AUTO · {form.bin.slice(0, 6)}</span>
-        </div>
-      )}
-
-      {/* Niveau */}
-      <div>
-        <div style={{ ...LABEL_STYLE, marginBottom: 5 }}>Niveau</div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {LEVELS.map(lvl => {
-            const c = LEVEL_COLORS[lvl]
-            const active = form.level === lvl
-            return (
-              <button key={lvl} onClick={() => set({ level: lvl })} style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: `1px solid ${active ? c.border : 'rgba(255,255,255,0.07)'}`, background: active ? c.bg : 'transparent', color: active ? c.text : 'rgba(255,255,255,0.2)', fontSize: 9, ...MONO, fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer' }}>
-                {lvl}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Prix + Stock */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <div>
-          <div style={{ ...LABEL_STYLE, marginBottom: 5 }}>Prix (€)</div>
-          <input style={INPUT_STYLE} type="number" value={form.prix} onChange={e => set({ prix: e.target.value })} placeholder="49.99" inputMode="decimal" />
-        </div>
-        <div>
-          <div style={{ ...LABEL_STYLE, marginBottom: 5 }}>Stock</div>
-          <input style={INPUT_STYLE} type="number" value={form.stock} onChange={e => set({ stock: e.target.value })} placeholder="1" inputMode="numeric" />
-        </div>
-      </div>
-
-      {/* CP + Âge */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <div>
-          <div style={{ ...LABEL_STYLE, marginBottom: 5 }}>Code Postal</div>
-          <input style={INPUT_STYLE} value={form.cp} onChange={e => set({ cp: e.target.value })} placeholder="75001" />
-        </div>
-        <div>
-          <div style={{ ...LABEL_STYLE, marginBottom: 5 }}>Âge titulaire</div>
-          <input style={INPUT_STYLE} value={form.age} onChange={e => set({ age: e.target.value })} placeholder="35" inputMode="numeric" />
-        </div>
-      </div>
-
-      {/* Tags */}
-      <div>
-        <div style={{ ...LABEL_STYLE, marginBottom: 5 }}>Tags</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {AVAILABLE_TAGS.map(tag => {
-            const active = form.tags.includes(tag)
-            return (
-              <button key={tag} onClick={() => toggleTag(tag)} style={{ padding: '5px 10px', borderRadius: 20, border: `1px solid ${active ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.08)'}`, background: active ? 'rgba(251,191,36,0.1)' : 'transparent', color: active ? GOLD : 'rgba(255,255,255,0.25)', fontSize: 9, ...MONO, fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer' }}>
-                {tag}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Catégorie */}
-      {categories.length > 0 && (
-        <div>
-          <div style={{ ...LABEL_STYLE, marginBottom: 5 }}>Catégorie</div>
-          <select style={{ ...INPUT_STYLE, appearance: 'none' as any }} value={form.categoryId} onChange={e => set({ categoryId: Number(e.target.value) })}>
-            <option value={0}>— Aucune —</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-      )}
+      {showBulk && <BulkUploadPanel productId={p.id} onDone={handleBulkDone} />}
     </div>
   )
 }
@@ -190,13 +227,6 @@ export default function CollabDashboard() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   useTelegramBackButton(useCallback(() => navigate('/'), [navigate]))
-
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [addForm, setAddForm] = useState<CardForm>(emptyCardForm())
-  const [addError, setAddError] = useState<string | null>(null)
-
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [editForm, setEditForm] = useState<CardForm>(emptyCardForm())
 
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
 
@@ -212,34 +242,13 @@ export default function CollabDashboard() {
     queryFn: () => api.get('/api/collab/products').then(r => r.data),
   })
 
-  const { data: categories = [] } = useQuery<Category[]>({
+  // categories kept for type compatibility — not used in this view directly
+  useQuery<Category[]>({
     queryKey: ['categories'],
     queryFn: () => api.get('/api/categories').then(r => r.data),
   })
 
   // ── Mutations ────────────────────────────────────────────────────────────────
-  const createProduct = useMutation({
-    mutationFn: (body: object) => api.post('/api/collab/products', body).then(r => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collab-products'] })
-      queryClient.invalidateQueries({ queryKey: ['collab-stats'] })
-      setAddForm(emptyCardForm())
-      setShowAddForm(false)
-      setAddError(null)
-    },
-    onError: (err: any) => setAddError(err?.response?.data?.message ?? 'Erreur lors de la création.'),
-  })
-
-  const updateProduct = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: object }) =>
-      api.put(`/api/collab/products/${id}`, body).then(r => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collab-products'] })
-      queryClient.invalidateQueries({ queryKey: ['collab-stats'] })
-      setEditingId(null)
-    },
-  })
-
   const deleteProduct = useMutation({
     mutationFn: (id: number) => api.delete(`/api/collab/products/${id}`),
     onSuccess: () => {
@@ -248,24 +257,6 @@ export default function CollabDashboard() {
       setConfirmDelete(null)
     },
   })
-
-  // ── Helpers ──────────────────────────────────────────────────────────────────
-  function startEdit(p: CollabProduct) {
-    setEditingId(p.id)
-    setEditForm(parseCardMeta(p))
-  }
-
-  function submitAdd() {
-    if (!addForm.bin || !addForm.bank || !addForm.prix) {
-      setAddError('BIN, banque et prix sont requis.')
-      return
-    }
-    createProduct.mutate(buildProductPayload(addForm))
-  }
-
-  function submitEdit(id: number) {
-    updateProduct.mutate({ id, body: buildProductPayload(editForm) })
-  }
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -303,8 +294,20 @@ export default function CollabDashboard() {
 
         {/* My cards */}
         <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 14px 8px' }}>
+          <div style={{ padding: '12px 14px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ ...LABEL_STYLE }}>MES CARTES</div>
+            <button
+              onClick={() => navigate('/collab/add')}
+              style={{
+                height: 28, paddingInline: 12, borderRadius: 8,
+                border: '1px solid rgba(251,191,36,0.35)',
+                background: 'rgba(251,191,36,0.08)',
+                color: GOLD, cursor: 'pointer',
+                fontSize: 10, ...BEBAS, letterSpacing: '0.08em',
+              }}
+            >
+              + AJOUTER UNE CARTE
+            </button>
           </div>
 
           {productsLoading ? (
@@ -315,94 +318,20 @@ export default function CollabDashboard() {
             <div style={{ padding: '12px 14px 16px', color: 'rgba(255,255,255,0.3)', fontSize: 12, ...MONO }}>Aucune carte pour l'instant.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {products.map((p, idx) => {
-                const meta = parseCardMeta(p)
-                const lc = LEVEL_COLORS[meta.level] ?? LEVEL_COLORS.CLASSIC
-                return (
-                  <div key={p.id}>
-                    {idx > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', margin: '0 14px' }} />}
-
-                    {editingId === p.id ? (
-                      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, borderTop: idx > 0 ? undefined : '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ ...LABEL_STYLE, color: GOLD }}>MODIFIER LA CARTE</div>
-                        <CardFormFields form={editForm} onChange={setEditForm} categories={categories} />
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => submitEdit(p.id)} disabled={updateProduct.isPending} style={{ flex: 1, background: updateProduct.isPending ? 'rgba(251,191,36,0.3)' : GOLD, color: '#050505', border: 'none', borderRadius: 9, padding: '10px', ...BEBAS, fontSize: 13, letterSpacing: '0.08em', cursor: updateProduct.isPending ? 'not-allowed' : 'pointer' }}>
-                            {updateProduct.isPending ? '...' : 'SAUVEGARDER'}
-                          </button>
-                          <button onClick={() => setEditingId(null)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', borderRadius: 9, padding: '10px 14px', ...BEBAS, fontSize: 13, letterSpacing: '0.06em', cursor: 'pointer' }}>
-                            ANNULER
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {/* Thumbnail */}
-                        <div style={{ width: 52, height: 33, borderRadius: 6, overflow: 'hidden', background: 'rgba(255,255,255,0.06)', flexShrink: 0, border: '1px solid rgba(255,255,255,0.06)' }}>
-                          {p.imageUrl ? <img src={p.imageUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} /> : null}
-                        </div>
-                        {/* Info */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-                            <span style={{ color: p.isActive ? '#fff' : 'rgba(255,255,255,0.3)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta.bank || p.name}</span>
-                            <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 4, background: lc.bg, color: lc.text, border: `1px solid ${lc.border}`, ...MONO, letterSpacing: '0.06em', flexShrink: 0 }}>{meta.level}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ ...MONO, fontSize: 11, color: GOLD }}>€{Number(p.price).toFixed(2)}</span>
-                            {meta.bin && <span style={{ ...MONO, fontSize: 9, color: 'rgba(255,255,255,0.2)' }}>BIN {meta.bin}</span>}
-                            <span style={{ ...MONO, fontSize: 9, color: p.stock > 0 ? SUCCESS : DANGER, background: p.stock > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${p.stock > 0 ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 4, padding: '1px 5px' }}>
-                              {p.stock > 0 ? `×${p.stock}` : 'ÉPUISÉ'}
-                            </span>
-                          </div>
-                        </div>
-                        {/* Actions */}
-                        {confirmDelete === p.id ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                            <div style={{ ...LABEL_STYLE, color: DANGER }}>CONFIRMER ?</div>
-                            <div style={{ display: 'flex', gap: 5 }}>
-                              <button onClick={() => deleteProduct.mutate(p.id)} disabled={deleteProduct.isPending} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: DANGER, borderRadius: 7, padding: '5px 10px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>{deleteProduct.isPending ? '...' : 'OUI'}</button>
-                              <button onClick={() => setConfirmDelete(null)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', borderRadius: 7, padding: '5px 10px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>NON</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                            <button onClick={() => startEdit(p)} style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: GOLD, borderRadius: 7, padding: '5px 10px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>MODIFIER</button>
-                            <button onClick={() => setConfirmDelete(p.id)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: DANGER, borderRadius: 7, padding: '5px 10px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>SUPPR.</button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Add card */}
-        <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
-          <button onClick={() => { setShowAddForm(v => !v); setAddError(null) }} style={{ width: '100%', background: 'none', border: 'none', padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 22, height: 22, borderRadius: 6, background: showAddForm ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: GOLD, fontSize: 14, lineHeight: 1 }}>{showAddForm ? '−' : '+'}</div>
-              <span style={{ ...BEBAS, fontSize: 14, letterSpacing: '0.08em', color: showAddForm ? GOLD : 'rgba(255,255,255,0.7)' }}>AJOUTER UNE CARTE</span>
-            </div>
-            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>{showAddForm ? '▲' : '▼'}</span>
-          </button>
-
-          {showAddForm && (
-            <div style={{ padding: '0 14px 14px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ height: 12 }} />
-              <CardFormFields form={addForm} onChange={setAddForm} categories={categories} />
-
-              {addError && (
-                <div style={{ marginTop: 8, fontSize: 12, ...MONO, color: DANGER, padding: '6px 10px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 7 }}>
-                  {addError}
+              {products.map((p, idx) => (
+                <div key={p.id}>
+                  {idx > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', margin: '0 14px' }} />}
+                  <ProductRow
+                    p={p}
+                    onEdit={() => navigate(`/collab/edit/${p.id}`)}
+                    onDelete={() => deleteProduct.mutate(p.id)}
+                    confirmDelete={confirmDelete === p.id}
+                    onConfirmDelete={() => setConfirmDelete(p.id)}
+                    onCancelDelete={() => setConfirmDelete(null)}
+                    deleting={deleteProduct.isPending && confirmDelete === p.id}
+                  />
                 </div>
-              )}
-
-              <button onClick={submitAdd} disabled={createProduct.isPending} style={{ width: '100%', marginTop: 12, background: createProduct.isPending ? 'rgba(251,191,36,0.3)' : GOLD, color: '#050505', border: 'none', borderRadius: 9, padding: '11px', ...BEBAS, fontSize: 14, letterSpacing: '0.1em', cursor: createProduct.isPending ? 'not-allowed' : 'pointer' }}>
-                {createProduct.isPending ? '...' : 'AJOUTER LA CARTE'}
-              </button>
+              ))}
             </div>
           )}
         </div>
@@ -435,6 +364,8 @@ export default function CollabDashboard() {
         input::placeholder { color: rgba(255,255,255,0.2); }
         select option { background: #1a1a1a; color: #fff; }
         ::-webkit-scrollbar { display: none; }
+        textarea { resize: vertical; }
+        textarea::placeholder { color: rgba(255,255,255,0.15); }
       `}</style>
     </div>
   )

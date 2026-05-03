@@ -20,14 +20,14 @@ router.get('/', async (req: AuthRequest, res) => {
 router.post('/', async (req: AuthRequest, res) => {
   const { categoryId, name, description, price, stock, imageUrl, images } = req.body
 
-  if (!categoryId || !name || price == null) {
+  if (!name || price == null) {
     res.status(400).json({ error: 'Missing required fields' })
     return
   }
 
   const product = await prisma.product.create({
     data: {
-      categoryId: parseInt(categoryId),
+      categoryId: categoryId ? parseInt(categoryId) : null,
       name,
       description: description ?? '',
       price: parseFloat(price),
@@ -78,6 +78,35 @@ router.delete('/:id', async (req: AuthRequest, res) => {
 
   await prisma.product.update({ where: { id }, data: { isActive: false } })
   res.json({ ok: true })
+})
+
+// GET /:id/inventory — inventory stats (ownership check)
+router.get('/:id/inventory', async (req: AuthRequest, res) => {
+  const productId = parseInt(req.params.id)
+  const product = await prisma.product.findFirst({ where: { id: productId, collaboratorId: req.userId! } })
+  if (!product) { res.status(404).json({ error: 'Not found' }); return }
+  const [total, unsold] = await Promise.all([
+    prisma.cardInventory.count({ where: { productId } }),
+    prisma.cardInventory.count({ where: { productId, sold: false } }),
+  ])
+  res.json({ total, unsold, sold: total - unsold })
+})
+
+// POST /:id/inventory/bulk — bulk upload CC lines (ownership check)
+router.post('/:id/inventory/bulk', async (req: AuthRequest, res) => {
+  const productId = parseInt(req.params.id)
+  const product = await prisma.product.findFirst({ where: { id: productId, collaboratorId: req.userId! } })
+  if (!product) { res.status(404).json({ error: 'Not found' }); return }
+  const { lines } = req.body as { lines: string[] }
+  if (!lines || !Array.isArray(lines) || lines.length === 0) {
+    res.status(400).json({ error: 'lines array required' }); return
+  }
+  const valid = lines.filter(l => /^\d{13,19}/.test(l.trim())).map(l => l.trim())
+  if (valid.length === 0) { res.status(400).json({ error: 'No valid CC lines found' }); return }
+  await prisma.cardInventory.createMany({ data: valid.map(fullData => ({ productId, fullData })) })
+  const unsold = await prisma.cardInventory.count({ where: { productId, sold: false } })
+  await prisma.product.update({ where: { id: productId }, data: { stock: unsold } })
+  res.json({ added: valid.length, stock: unsold })
 })
 
 export default router
