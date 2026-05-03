@@ -28,11 +28,10 @@ echo "==> Running Prisma migrations..."
 DATABASE_URL="file:$DB_PATH" npx prisma migrate deploy
 
 echo "==> Restarting backend with PM2..."
-pm2 restart auto-shop-backend || pm2 start dist/src/index.js \
+pm2 restart auto-shop-backend || pm2 start "$BACKEND_DIR/dist/src/index.js" \
   --name auto-shop-backend \
-  --cwd "$BACKEND_DIR" \
-  --env production
+  --cwd "$BACKEND_DIR"
 
-pm2 save
+pm2 save --force
 
 echo "==> Deploy complete!"
