@@ -67,8 +67,8 @@ function OrderCard({ order }: { order: DataOrder }) {
       {/* Files */}
       <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {order.files.map((f) => {
-          const icon  = f.fileType === 'BRUT' ? '📄' : f.fileType === 'SPECIAL_TXT' ? '✨' : '📊'
-          const label = f.fileType === 'BRUT' ? 'FICHIER BRUT' : f.fileType === 'SPECIAL_TXT' ? 'SPÉCIAL TXT' : 'SPÉCIAL XLSX'
+          const icon  = f.fileType === 'BRUT' ? '📄' : f.fileType === 'SPECIAL_TXT' ? '📞' : '📊'
+          const label = f.fileType === 'BRUT' ? 'FICHIER BRUT' : f.fileType === 'SPECIAL_TXT' ? 'FICHE A CALL' : 'FORMAT SENDER BOBBY'
           const part  = f.partNumber ? ` • Partie ${f.partNumber}` : ''
           return (
             <button key={f.id} onClick={() => downloadFile(f)} style={{

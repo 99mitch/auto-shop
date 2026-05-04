@@ -108,8 +108,8 @@ function FormatSheet({ count, accent, type, onConfirm, onClose }: FormatSheetPro
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 2 }}>CHOISIR LES FORMATS (min. 1)</div>
           <FormatRow label="FICHIER BRUT (.txt)" sub="Colonnes séparées par virgule" state={brut} setter={setBrut} />
-          <FormatRow label="SPÉCIAL TXT (emojis)" sub="Format formaté avec icônes" state={specialTxt} setter={setSpecialTxt} />
-          <FormatRow label="SPÉCIAL XLSX (Excel)" sub="Colonnes NUMBER (+33) et NAME" state={specialXlsx} setter={setSpecialXlsx} showSplit />
+          <FormatRow label="FICHE A CALL" sub="Format texte avec icônes" state={specialTxt} setter={setSpecialTxt} />
+          <FormatRow label="FORMAT SENDER BOBBY" sub="Excel — colonnes NUMBER (+33) et NAME" state={specialXlsx} setter={setSpecialXlsx} showSplit />
         </div>
 
         {/* Confirm */}
