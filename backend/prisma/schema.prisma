@@ -129,3 +129,25 @@ model CardInventory {
   order     Order?   @relation(fields: [orderId], references: [id])
   createdAt DateTime @default(now())
 }
+
+model DataFile {
+  id         Int          @id @default(autoincrement())
+  name       String
+  type       String
+  rowCount   Int          @default(0)
+  uploadedAt DateTime     @default(now())
+  records    DataRecord[]
+}
+
+model DataRecord {
+  id         Int      @id @default(autoincrement())
+  fileId     Int
+  file       DataFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  type       String
+  gender     String?
+  dob        String?
+  department String?
+  bank       String?
+  rawData    String   @default("{}")
+  createdAt  DateTime @default(now())
+}

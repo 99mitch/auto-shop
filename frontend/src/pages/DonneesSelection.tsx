@@ -88,7 +88,7 @@ export default function DonneesSelection() {
         {TYPES.map((t) => (
           <button
             key={t.key}
-            onClick={() => navigate(`/catalogue?type=${t.key}`)}
+            onClick={() => navigate(`/extraction?type=${t.key}`)}
             className="panel-btn"
             style={{
               flex: 1, minHeight: 0,

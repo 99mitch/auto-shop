@@ -9,6 +9,7 @@ import adminRouter from './routes/admin/index'
 import collabRouter from './routes/collab/index'
 import webhookRouter from './routes/webhook'
 import deliverRouter from './routes/deliver'
+import donneesRouter from './routes/donnees'
 
 export const app = express()
 
@@ -27,6 +28,7 @@ app.use('/api/profile', profileRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/collab', collabRouter)
 app.use('/api/deliver', deliverRouter)
+app.use('/api/donnees', donneesRouter)
 app.use('/webhook', webhookRouter)
 
 app.get('/health', (_req, res) => res.json({ ok: true }))
