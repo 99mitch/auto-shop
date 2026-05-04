@@ -46,13 +46,13 @@ export const BANKS_TRAD = [
   'BNP PARIBAS', 'CREDIT AGRICOLE', 'SOCIETE GENERALE', 'LCL',
   'CIC', 'CREDIT MUTUEL', 'LA BANQUE POSTALE', 'CAISSE EPARGNE',
   'BANQUE POPULAIRE', 'BRED', 'HSBC FRANCE', 'CREDIT DU NORD',
-  'PALATINE', 'AXA BANQUE', 'BOURSORAMA', 'HELLO BANK',
-  'FORTUNEO', 'ING', 'MONABANQ', 'ORANGE BANK',
-  'MA FRENCH BANK', 'FLOA BANK', 'CETELEM', 'COFIDIS',
+  'PALATINE', 'AXA BANQUE', 'CETELEM', 'COFIDIS',
   'SOFINCO', 'FRANFINANCE',
 ]
 
 export const BANKS_NEO = [
+  'BOURSORAMA', 'HELLO BANK', 'FORTUNEO', 'ING',
+  'MONABANQ', 'ORANGE BANK', 'MA FRENCH BANK', 'FLOA BANK',
   'REVOLUT', 'N26', 'NICKEL', 'QONTO',
   'LYDIA', 'SUMERIA', 'SHINE', 'BUNQ',
   'WISE', 'PIXPAY', 'KARD', 'GREEN GOT',
@@ -184,7 +184,7 @@ function BankPicker({ selected, onToggle, accent }: { selected: Set<string>; onT
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
         {(['TRAD', 'NEO'] as const).map((c) => {
           const active = cat === c
-          const label = c === 'TRAD' ? 'TRADITIONNELLES' : 'NÉOBANQUES'
+          const label = c === 'TRAD' ? 'TRADITIONNELLES' : 'EN LIGNE / NEO'
           return (
             <button key={c} onClick={() => setCat(c)} style={{
               flex: 1, height: 30, borderRadius: 7, cursor: 'pointer',
