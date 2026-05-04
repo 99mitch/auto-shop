@@ -90,6 +90,7 @@ export default function Profile() {
             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.22)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 6 }}>NAVIGATION</div>
           </div>
           <NavRow label="MES COMMANDES" icon="📦" onClick={() => navigate('/orders')} />
+          <NavRow label="MES EXTRACTIONS" icon="🗂" onClick={() => navigate('/mes-extractions')} accent="cyan" />
           {!authLoading && isAdmin && (
             <NavRow label="PANEL ADMIN" icon="⚙" onClick={() => navigate('/admin')} accent="gold" />
           )}
@@ -142,10 +143,10 @@ export default function Profile() {
   )
 }
 
-function NavRow({ label, icon, onClick, accent }: { label: string; icon: string; onClick: () => void; accent?: 'gold' | 'green' }) {
-  const color = accent === 'gold' ? '#fbbf24' : accent === 'green' ? '#4ade80' : 'rgba(255,255,255,0.55)'
-  const bg = accent === 'gold' ? 'rgba(251,191,36,0.04)' : accent === 'green' ? 'rgba(34,197,94,0.04)' : 'transparent'
-  const border = accent ? `1px solid ${accent === 'gold' ? 'rgba(251,191,36,0.1)' : 'rgba(34,197,94,0.1)'}` : 'none'
+function NavRow({ label, icon, onClick, accent }: { label: string; icon: string; onClick: () => void; accent?: 'gold' | 'green' | 'cyan' }) {
+  const color = accent === 'gold' ? '#fbbf24' : accent === 'green' ? '#4ade80' : accent === 'cyan' ? '#22d3ee' : 'rgba(255,255,255,0.55)'
+  const bg = accent === 'gold' ? 'rgba(251,191,36,0.04)' : accent === 'green' ? 'rgba(34,197,94,0.04)' : accent === 'cyan' ? 'rgba(34,211,238,0.04)' : 'transparent'
+  const border = accent ? `1px solid ${accent === 'gold' ? 'rgba(251,191,36,0.1)' : accent === 'green' ? 'rgba(34,197,94,0.1)' : 'rgba(34,211,238,0.1)'}` : 'none'
 
   return (
     <button onClick={onClick} style={{

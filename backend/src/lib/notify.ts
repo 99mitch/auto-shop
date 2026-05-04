@@ -25,6 +25,14 @@ export async function deliverCards(
   }
 }
 
+export async function notify(telegramId: string, message: string): Promise<void> {
+  try {
+    await bot.api.sendMessage(telegramId, message)
+  } catch (err) {
+    console.warn(`[notify] Failed to send message to ${telegramId}:`, err)
+  }
+}
+
 export async function notifyOrderStatus(
   telegramId: string,
   orderId: number,

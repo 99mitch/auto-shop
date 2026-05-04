@@ -23,6 +23,7 @@ import CollabGuard from './pages/collab/CollabGuard'
 import CollabAddCard from './pages/collab/CollabAddCard'
 import DonneesSelection from './pages/DonneesSelection'
 import ExtractionPage from './pages/ExtractionPage'
+import MesCommandesDonnees from './pages/MesCommandesDonnees'
 
 const router = createBrowserRouter([
   {
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
       { index: true, element: <Landing /> },
       { path: 'donnees', element: <DonneesSelection /> },
       { path: 'extraction', element: <ExtractionPage /> },
+      { path: 'mes-extractions', element: <MesCommandesDonnees /> },
       { path: 'catalogue', element: <Catalogue /> },
       { path: 'product/:id', element: <ProductDetail /> },
       { path: 'cart', element: <Cart /> },

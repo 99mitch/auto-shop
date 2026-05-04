@@ -13,6 +13,6 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src", "prisma/seed.ts", "prisma/seed-donnees.ts"],
+  "include": ["src", "prisma/seed.ts", "prisma/seed-donnees.ts", "src/scripts"],
   "exclude": ["node_modules", "dist", "tests"]
 }

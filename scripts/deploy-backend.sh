@@ -27,8 +27,8 @@ npm run build
 echo "==> Running Prisma migrations..."
 DATABASE_URL="file:$DB_PATH" npx prisma migrate deploy
 
-echo "==> Seeding donnees data (idempotent)..."
-DATABASE_URL="file:$DB_PATH" node dist/prisma/seed-donnees.js
+echo "==> Importing donnees CSV files (idempotent)..."
+DONNEES_DIR="/var/www/auto-shop-data/donnees" DATABASE_URL="file:$DB_PATH" node dist/src/scripts/import-donnees.js || true
 
 echo "==> Restarting backend with PM2..."
 pm2 restart auto-shop-backend || pm2 start "$BACKEND_DIR/dist/src/index.js" \
