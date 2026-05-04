@@ -42,23 +42,24 @@ const MOCK_FILES: DataFile[] = [
   { id: -20, name: 'RETAIL_FR_2024',        type: 'MAILLIST', rowCount: 156, uploadedAt: '2024-03-05T10:00:00Z' },
 ]
 
-export const ALL_BANKS = [
-  // Grandes banques traditionnelles
+export const BANKS_TRAD = [
   'BNP PARIBAS', 'CREDIT AGRICOLE', 'SOCIETE GENERALE', 'LCL',
   'CIC', 'CREDIT MUTUEL', 'LA BANQUE POSTALE', 'CAISSE EPARGNE',
   'BANQUE POPULAIRE', 'BRED', 'HSBC FRANCE', 'CREDIT DU NORD',
-  'PALATINE', 'AXA BANQUE', 'NATIXIS', 'BPCE',
-  // Banques en ligne
-  'BOURSORAMA', 'HELLO BANK', 'FORTUNEO', 'ING',
-  'MONABANQ', 'ORANGE BANK', 'MA FRENCH BANK', 'FLOA BANK',
-  // Néobanques
+  'PALATINE', 'AXA BANQUE', 'BOURSORAMA', 'HELLO BANK',
+  'FORTUNEO', 'ING', 'MONABANQ', 'ORANGE BANK',
+  'MA FRENCH BANK', 'FLOA BANK', 'CETELEM', 'COFIDIS',
+  'SOFINCO', 'FRANFINANCE',
+]
+
+export const BANKS_NEO = [
   'REVOLUT', 'N26', 'NICKEL', 'QONTO',
   'LYDIA', 'SUMERIA', 'SHINE', 'BUNQ',
   'WISE', 'PIXPAY', 'KARD', 'GREEN GOT',
   'ANYTIME', 'VYBE', 'PAYSERA', 'MONESE',
-  // Crédit conso
-  'CETELEM', 'COFIDIS', 'SOFINCO', 'FRANFINANCE',
 ]
+
+export const ALL_BANKS = [...BANKS_TRAD, ...BANKS_NEO]
 
 const _DEPTS = ['01','06','13','17','21','25','29','31','33','34','35','38','42','44','49','54','57','59','62','63','67','69','75','76','77','78','80','83','91','92','93','94','95']
 
@@ -172,11 +173,36 @@ function YearRange({ from, to, onFrom, onTo }: { from: string; to: string; onFro
 }
 
 function BankPicker({ selected, onToggle, accent }: { selected: Set<string>; onToggle: (b: string) => void; accent: string }) {
+  const [cat, setCat] = useState<'TRAD' | 'NEO'>('TRAD')
+  const banks = cat === 'TRAD' ? BANKS_TRAD : BANKS_NEO
+
   return (
     <div>
-      <FilterLabel>Banque {selected.size > 0 && <span style={{ color: accent, opacity: 0.8 }}>({selected.size})</span>}</FilterLabel>
+      <FilterLabel>Banque {selected.size > 0 && <span style={{ color: accent, opacity: 0.8 }}>({selected.size} sélect.)</span>}</FilterLabel>
+
+      {/* Toggle catégorie */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+        {(['TRAD', 'NEO'] as const).map((c) => {
+          const active = cat === c
+          const label = c === 'TRAD' ? 'TRADITIONNELLES' : 'NÉOBANQUES'
+          return (
+            <button key={c} onClick={() => setCat(c)} style={{
+              flex: 1, height: 30, borderRadius: 7, cursor: 'pointer',
+              border: active ? `1px solid ${accent}80` : '1px solid rgba(255,255,255,0.1)',
+              background: active ? `color-mix(in srgb, ${accent} 12%, transparent)` : 'rgba(255,255,255,0.03)',
+              color: active ? accent : 'rgba(255,255,255,0.35)',
+              fontFamily: '"JetBrains Mono", monospace', fontSize: 8, fontWeight: 700,
+              letterSpacing: '0.1em', transition: 'all 0.15s',
+            }}>
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Chips */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {ALL_BANKS.map((bank) => {
+        {banks.map((bank) => {
           const active = selected.has(bank)
           return (
             <button key={bank} onClick={() => onToggle(bank)} style={{
