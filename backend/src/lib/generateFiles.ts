@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const XLSX = require('xlsx') as typeof import('xlsx')
+import * as XLSX from 'xlsx'
 
 export interface RecordData {
   nom?: string | null

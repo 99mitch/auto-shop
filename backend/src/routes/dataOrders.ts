@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { Prisma } from '@prisma/client'
 import { InputFile } from 'grammy'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { prisma } from '../prisma'
@@ -19,52 +18,24 @@ router.use(authMiddleware)
 type ExtractionType = 'FICHE' | 'NUMLIST' | 'MAILLIST'
 
 interface SplitCfg { linesPerFile: number | null }
-interface Formats {
-  brut: boolean
-  specialTxt: boolean
-  specialXlsx: boolean
-}
-interface Splits {
-  brut: SplitCfg
-  specialTxt: SplitCfg
-  specialXlsx: SplitCfg
+interface Formats { brut: boolean; specialTxt: boolean; specialXlsx: boolean }
+interface Splits  { brut: SplitCfg; specialTxt: SplitCfg; specialXlsx: SplitCfg }
+
+function categoryFilter(typeUp: ExtractionType) {
+  if (typeUp === 'FICHE')    return { inFiche: true,    extractedAsFiche: false }
+  if (typeUp === 'NUMLIST')  return { inNumlist: true,  extractedAsNumlist: false }
+  return                            { inMaillist: true, extractedAsMaillist: false }
 }
 
-function buildWhere(
-  fileIds: number[],
-  typeUp: ExtractionType,
-  dobFrom?: string,
-  dobTo?: string,
-  departments?: string[],
-  banks?: string[],
-  gender?: string,
-): Prisma.DataRecordWhereInput {
-  const inField = typeUp === 'FICHE' ? 'inFiche' : typeUp === 'NUMLIST' ? 'inNumlist' : 'inMaillist'
-  const exField = typeUp === 'FICHE' ? 'extractedAsFiche' : typeUp === 'NUMLIST' ? 'extractedAsNumlist' : 'extractedAsMaillist'
-
-  const where: Prisma.DataRecordWhereInput = {
-    fileId: { in: fileIds },
-    [inField]: true,
-    [exField]: false,
-  }
-  if (dobFrom || dobTo) {
-    where.dateNaissance = {
-      ...(dobFrom ? { gte: dobFrom } : {}),
-      ...(dobTo   ? { lte: dobTo   } : {}),
-    }
-  }
-  if (departments && departments.length > 0) where.department = { in: departments }
-  if (banks      && banks.length > 0)        where.bank       = { in: banks }
-  if (gender && gender !== 'ALL')            where.gender     = gender
-  return where
+function lockData(typeUp: ExtractionType) {
+  if (typeUp === 'FICHE')    return { extractedAsFiche: true }
+  if (typeUp === 'NUMLIST')  return { extractedAsNumlist: true }
+  return                            { extractedAsMaillist: true }
 }
 
 // POST /api/data-orders/extract
 router.post('/extract', async (req: AuthRequest, res) => {
-  const {
-    fileIds, type, dobFrom, dobTo, departments, banks, gender, withNames,
-    formats, splits,
-  } = req.body as {
+  const { fileIds, type, dobFrom, dobTo, departments, banks, gender, withNames, formats, splits } = req.body as {
     fileIds: number[]
     type: string
     dobFrom?: string
@@ -84,32 +55,37 @@ router.post('/extract', async (req: AuthRequest, res) => {
   if (!['FICHE', 'NUMLIST', 'MAILLIST'].includes(typeUp))
     return res.status(400).json({ error: 'Invalid type' })
 
-  if (!formats.brut && !formats.specialTxt && !formats.specialXlsx)
+  if (!formats?.brut && !formats?.specialTxt && !formats?.specialXlsx)
     return res.status(400).json({ error: 'Select at least one format' })
 
   try {
-    const where = buildWhere(fileIds, typeUp, dobFrom, dobTo, departments, banks, gender)
-    const records = await prisma.dataRecord.findMany({ where })
+    const records = await prisma.dataRecord.findMany({
+      where: {
+        fileId: { in: fileIds },
+        ...categoryFilter(typeUp),
+        ...(dobFrom || dobTo ? { dateNaissance: { ...(dobFrom ? { gte: dobFrom } : {}), ...(dobTo ? { lte: dobTo } : {}) } } : {}),
+        ...(departments && departments.length > 0 ? { department: { in: departments } } : {}),
+        ...(banks && banks.length > 0 ? { bank: { in: banks } } : {}),
+        ...(gender && gender !== 'ALL' ? { gender } : {}),
+      },
+    })
 
     if (records.length === 0)
       return res.status(400).json({ error: 'No matching records' })
 
     // Lock records atomically
-    const exField = typeUp === 'FICHE' ? 'extractedAsFiche' : typeUp === 'NUMLIST' ? 'extractedAsNumlist' : 'extractedAsMaillist'
     await prisma.dataRecord.updateMany({
       where: { id: { in: records.map((r) => r.id) } },
-      data: { [exField]: true },
+      data: lockData(typeUp),
     })
 
-    const user = await prisma.user.findUnique({ where: { id: req.userId! } })
+    const user      = await prisma.user.findUnique({ where: { id: req.userId! } })
     const username  = user?.username ?? user?.firstName ?? `user${req.userId}`
     const dateStr   = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     const dateLabel = new Date().toISOString().slice(0, 10)
     const meta      = { type: typeUp, date: dateLabel }
 
-    const filesToCreate: Array<{
-      fileType: string; filename: string; content: string; partNumber?: number
-    }> = []
+    const filesToCreate: Array<{ fileType: string; filename: string; content: string; partNumber?: number }> = []
 
     const addFiles = (
       fileType: string,
@@ -117,30 +93,28 @@ router.post('/extract', async (req: AuthRequest, res) => {
       linesPerFile: number | null,
       contentFn: (chunk: RecordData[], part?: { num: number; total: number }) => string,
     ) => {
-      const parts = splitInto(records as RecordData[], linesPerFile ?? records.length)
-      const total = parts.length
-
-      parts.forEach((chunk, idx) => {
-        const partNum  = total > 1 ? idx + 1 : undefined
+      const chunks = splitInto(records as RecordData[], linesPerFile ?? records.length)
+      const total  = chunks.length
+      chunks.forEach((chunk, idx) => {
+        const partNum    = total > 1 ? idx + 1 : undefined
         const partSuffix = total > 1 ? `_part${partNum}` : ''
-        const base     = `${username}_${typeUp.toLowerCase()}_${dateStr}`
-        const slug     = fileType === 'BRUT' ? 'brut' : fileType === 'SPECIAL_TXT' ? 'special' : 'special'
-        const filename = `${base}_${slug}${partSuffix}.${ext}`
-        const content  = contentFn(chunk, total > 1 ? { num: partNum!, total } : undefined)
+        const slug       = fileType === 'BRUT' ? 'brut' : fileType === 'SPECIAL_TXT' ? 'acall' : 'sender'
+        const filename   = `${username}_${typeUp.toLowerCase()}_${dateStr}_${slug}${partSuffix}.${ext}`
+        const content    = contentFn(chunk, total > 1 ? { num: partNum!, total } : undefined)
         filesToCreate.push({ fileType, filename, content, partNumber: partNum })
       })
     }
 
     if (formats.brut) {
-      addFiles('BRUT', 'txt', splits.brut?.linesPerFile ?? null,
+      addFiles('BRUT', 'txt', splits?.brut?.linesPerFile ?? null,
         (chunk, part) => generateBrut(chunk, typeUp, withNames ?? false, { ...meta, part }))
     }
     if (formats.specialTxt) {
-      addFiles('SPECIAL_TXT', 'txt', splits.specialTxt?.linesPerFile ?? null,
+      addFiles('SPECIAL_TXT', 'txt', splits?.specialTxt?.linesPerFile ?? null,
         (chunk, part) => generateSpecialTxt(chunk, { ...meta, part }))
     }
     if (formats.specialXlsx) {
-      addFiles('SPECIAL_XLSX', 'xlsx', splits.specialXlsx?.linesPerFile ?? null,
+      addFiles('SPECIAL_XLSX', 'xlsx', splits?.specialXlsx?.linesPerFile ?? null,
         (chunk) => generateSpecialXlsx(chunk))
     }
 
@@ -203,9 +177,8 @@ router.get('/:id/download/:fileId', async (req: AuthRequest, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`)
 
     if (file.fileType === 'SPECIAL_XLSX') {
-      const buf = Buffer.from(file.content, 'base64')
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      res.send(buf)
+      res.send(Buffer.from(file.content, 'base64'))
     } else {
       res.setHeader('Content-Type', 'text/plain; charset=utf-8')
       res.send(file.content)

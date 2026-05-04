@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { Prisma } from '@prisma/client'
 import { authMiddleware } from '../middleware/auth'
 import { prisma } from '../prisma'
 
@@ -27,27 +26,30 @@ router.get('/files', async (req, res) => {
     return res.status(400).json({ error: 'Invalid type' })
   }
 
-  const inField   = type === 'FICHE' ? 'inFiche' : type === 'NUMLIST' ? 'inNumlist' : 'inMaillist'
-  const exField   = type === 'FICHE' ? 'extractedAsFiche' : type === 'NUMLIST' ? 'extractedAsNumlist' : 'extractedAsMaillist'
-  const cntField  = type === 'FICHE' ? 'ficheCount' : type === 'NUMLIST' ? 'numlistCount' : 'maillistCount'
-
   try {
     const files = await prisma.dataFile.findMany({
-      where: { [cntField]: { gt: 0 } },
+      where: type === 'FICHE'
+        ? { ficheCount: { gt: 0 } }
+        : type === 'NUMLIST'
+        ? { numlistCount: { gt: 0 } }
+        : { maillistCount: { gt: 0 } },
       orderBy: { uploadedAt: 'desc' },
     })
 
-    // Compute available count per file
     const withAvailable = await Promise.all(
       files.map(async (f) => {
         const available = await prisma.dataRecord.count({
-          where: { fileId: f.id, [inField]: true, [exField]: false },
+          where: type === 'FICHE'
+            ? { fileId: f.id, inFiche: true,    extractedAsFiche: false }
+            : type === 'NUMLIST'
+            ? { fileId: f.id, inNumlist: true,  extractedAsNumlist: false }
+            : { fileId: f.id, inMaillist: true, extractedAsMaillist: false },
         })
         return {
           id: f.id,
           name: f.name,
           uploadedAt: f.uploadedAt,
-          total: (f as Record<string, unknown>)[cntField] as number,
+          total: type === 'FICHE' ? f.ficheCount : type === 'NUMLIST' ? f.numlistCount : f.maillistCount,
           available,
           hasNom: f.hasNom, hasPrenom: f.hasPrenom, hasNumero: f.hasNumero,
           hasDob: f.hasDob, hasAdresse: f.hasAdresse, hasCodePostal: f.hasCodePostal,
@@ -79,33 +81,23 @@ router.post('/count', async (req, res) => {
   const typeUp = (type ?? '').toUpperCase()
   if (!['FICHE', 'NUMLIST', 'MAILLIST'].includes(typeUp)) return res.json({ count: 0 })
 
-  const inField = typeUp === 'FICHE' ? 'inFiche' : typeUp === 'NUMLIST' ? 'inNumlist' : 'inMaillist'
-  const exField = typeUp === 'FICHE' ? 'extractedAsFiche' : typeUp === 'NUMLIST' ? 'extractedAsNumlist' : 'extractedAsMaillist'
-
   try {
-    const where: Prisma.DataRecordWhereInput = {
-      fileId: { in: fileIds },
-      [inField]: true,
-      [exField]: false,
-    }
+    const categoryFilter = typeUp === 'FICHE'
+      ? { inFiche: true,    extractedAsFiche: false }
+      : typeUp === 'NUMLIST'
+      ? { inNumlist: true,  extractedAsNumlist: false }
+      : { inMaillist: true, extractedAsMaillist: false }
 
-    if (dobFrom || dobTo) {
-      where.dateNaissance = {
-        ...(dobFrom ? { gte: dobFrom } : {}),
-        ...(dobTo   ? { lte: dobTo   } : {}),
-      }
-    }
-    if (departments && departments.length > 0) {
-      where.department = { in: departments }
-    }
-    if (banks && banks.length > 0) {
-      where.bank = { in: banks }
-    }
-    if (gender && gender !== 'ALL') {
-      where.gender = gender
-    }
-
-    const count = await prisma.dataRecord.count({ where })
+    const count = await prisma.dataRecord.count({
+      where: {
+        fileId: { in: fileIds },
+        ...categoryFilter,
+        ...(dobFrom || dobTo ? { dateNaissance: { ...(dobFrom ? { gte: dobFrom } : {}), ...(dobTo ? { lte: dobTo } : {}) } } : {}),
+        ...(departments && departments.length > 0 ? { department: { in: departments } } : {}),
+        ...(banks && banks.length > 0 ? { bank: { in: banks } } : {}),
+        ...(gender && gender !== 'ALL' ? { gender } : {}),
+      },
+    })
     res.json({ count })
   } catch {
     res.status(500).json({ error: 'Server error' })
