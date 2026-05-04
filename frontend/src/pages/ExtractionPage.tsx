@@ -184,7 +184,7 @@ function BankPicker({ selected, onToggle, accent }: { selected: Set<string>; onT
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
         {(['TRAD', 'NEO'] as const).map((c) => {
           const active = cat === c
-          const label = c === 'TRAD' ? 'TRADITIONNELLES' : 'EN LIGNE / NEO'
+          const label = c === 'TRAD' ? 'BANQUE PHYSIQUE' : 'EN LIGNE / NEO'
           return (
             <button key={c} onClick={() => setCat(c)} style={{
               flex: 1, height: 30, borderRadius: 7, cursor: 'pointer',
