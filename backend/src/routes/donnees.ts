@@ -1,6 +1,7 @@
 import { Router } from 'express'
+import { Prisma } from '@prisma/client'
 import { authMiddleware } from '../middleware/auth'
-import prisma from '../prisma'
+import { prisma } from '../prisma'
 
 const router = Router()
 router.use(authMiddleware)
@@ -35,13 +36,15 @@ router.post('/count', async (req, res) => {
   }
 
   try {
-    const where: Record<string, unknown> = { fileId: { in: fileIds } }
+    const where: Prisma.DataRecordWhereInput = {
+      fileId: { in: fileIds },
+    }
 
     if (dobFrom || dobTo) {
-      const dobCond: Record<string, string> = {}
-      if (dobFrom) dobCond.gte = dobFrom
-      if (dobTo) dobCond.lte = dobTo
-      where.dob = dobCond
+      where.dob = {
+        ...(dobFrom ? { gte: dobFrom } : {}),
+        ...(dobTo   ? { lte: dobTo   } : {}),
+      }
     }
 
     if (departments && departments.length > 0) {
