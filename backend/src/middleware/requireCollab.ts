@@ -15,7 +15,7 @@ export async function requireCollab(req: AuthRequest, res: Response, next: NextF
   }
 
   const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { role: true } })
-  if (!user || user.role !== 'COLLABORATOR') {
+  if (!user || (user.role !== 'COLLABORATOR' && user.role !== 'ADMIN')) {
     res.status(403).json({ error: 'Forbidden' })
     return
   }
