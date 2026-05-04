@@ -21,6 +21,7 @@ import AdminCollaborators from './pages/admin/AdminCollaborators'
 import CollabDashboard from './pages/collab/CollabDashboard'
 import CollabGuard from './pages/collab/CollabGuard'
 import CollabAddCard from './pages/collab/CollabAddCard'
+import DonneesSelection from './pages/DonneesSelection'
 
 const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <Landing /> },
+      { path: 'donnees', element: <DonneesSelection /> },
       { path: 'catalogue', element: <Catalogue /> },
       { path: 'product/:id', element: <ProductDetail /> },
       { path: 'cart', element: <Cart /> },

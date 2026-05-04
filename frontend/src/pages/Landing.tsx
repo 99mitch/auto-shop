@@ -158,7 +158,7 @@ export default function Landing() {
 
         {/* Digital data panel */}
         <button
-          onClick={() => navigate('/catalogue?type=digital')}
+          onClick={() => navigate('/donnees')}
           className="panel-btn"
           style={{
             flex: 1, minHeight: 0,
