@@ -43,9 +43,21 @@ const MOCK_FILES: DataFile[] = [
 ]
 
 export const ALL_BANKS = [
-  'BNP PARIBAS', 'CREDIT AGRICOLE', 'SOCIETE GENERALE', 'LCLADV',
+  // Grandes banques traditionnelles
+  'BNP PARIBAS', 'CREDIT AGRICOLE', 'SOCIETE GENERALE', 'LCL',
   'CIC', 'CREDIT MUTUEL', 'LA BANQUE POSTALE', 'CAISSE EPARGNE',
-  'BANQUE POPULAIRE', 'HSBC', 'BRED', 'BOURSORAMA',
+  'BANQUE POPULAIRE', 'BRED', 'HSBC FRANCE', 'CREDIT DU NORD',
+  'PALATINE', 'AXA BANQUE', 'NATIXIS', 'BPCE',
+  // Banques en ligne
+  'BOURSORAMA', 'HELLO BANK', 'FORTUNEO', 'ING',
+  'MONABANQ', 'ORANGE BANK', 'MA FRENCH BANK', 'FLOA BANK',
+  // Néobanques
+  'REVOLUT', 'N26', 'NICKEL', 'QONTO',
+  'LYDIA', 'SUMERIA', 'SHINE', 'BUNQ',
+  'WISE', 'PIXPAY', 'KARD', 'GREEN GOT',
+  'ANYTIME', 'VYBE', 'PAYSERA', 'MONESE',
+  // Crédit conso
+  'CETELEM', 'COFIDIS', 'SOFINCO', 'FRANFINANCE',
 ]
 
 const _DEPTS = ['01','06','13','17','21','25','29','31','33','34','35','38','42','44','49','54','57','59','62','63','67','69','75','76','77','78','80','83','91','92','93','94','95']
