@@ -12,6 +12,7 @@
 import fs from 'fs'
 import path from 'path'
 import readline from 'readline'
+import { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
 import { detectBank } from '../lib/bankLookup'
 import { detectGender } from '../lib/genderLookup'
@@ -69,7 +70,7 @@ async function importFile(filePath: string) {
 
   let headers: string[] = []
   let colIndex: Record<string, number> = {}
-  const records: Parameters<typeof prisma.dataRecord.createMany>[0]['data'] = []
+  const records: Prisma.DataRecordCreateManyInput[] = []
 
   let ficheCount = 0, numlistCount = 0, maillistCount = 0
 
