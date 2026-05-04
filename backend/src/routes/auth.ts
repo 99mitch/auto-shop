@@ -49,7 +49,7 @@ router.post('/init', async (req: Request, res: Response) => {
     })
 
     const token = signJwt({ userId: user.id, telegramId: user.telegramId })
-    const isAdmin = getAdminIds().includes(user.telegramId)
+    const isAdmin = getAdminIds().includes(user.telegramId) || user.role === 'ADMIN'
     const isCollab = user.role === 'COLLABORATOR'
 
     res.json({ token, user, isAdmin, isCollab })
