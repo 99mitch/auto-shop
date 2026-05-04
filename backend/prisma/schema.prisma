@@ -201,11 +201,12 @@ model DataOrderRecord {
 }
 
 model DataOrderFile {
-  id        Int       @id @default(autoincrement())
-  orderId   Int
-  order     DataOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  fileType  String
-  filename  String
-  content   String
-  createdAt DateTime  @default(now())
+  id         Int       @id @default(autoincrement())
+  orderId    Int
+  order      DataOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fileType   String
+  filename   String
+  content    String
+  partNumber Int?
+  createdAt  DateTime  @default(now())
 }

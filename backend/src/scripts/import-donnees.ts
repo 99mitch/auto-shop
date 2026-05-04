@@ -55,7 +55,7 @@ function departmentFromPostal(cp?: string): string | null {
 }
 
 async function importFile(filePath: string) {
-  const filename = path.basename(filePath, '.csv')
+  const filename = path.basename(filePath).replace(/\.(csv|txt)$/i, '')
   console.log(`\n→ Importing: ${filename}`)
 
   const existing = await prisma.dataFile.findUnique({ where: { name: filename } })
@@ -168,7 +168,7 @@ async function main() {
       console.log(`Directory not found: ${DONNEES_DIR}`)
       process.exit(0)
     }
-    const files = fs.readdirSync(DONNEES_DIR).filter((f) => f.endsWith('.csv'))
+    const files = fs.readdirSync(DONNEES_DIR).filter((f) => f.endsWith('.csv') || f.endsWith('.txt'))
     if (files.length === 0) {
       console.log('No CSV files found in', DONNEES_DIR)
       process.exit(0)

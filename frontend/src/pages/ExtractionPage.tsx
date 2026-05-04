@@ -4,6 +4,136 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 
+// ─── Format sheet ─────────────────────────────────────────────────────────────
+
+interface FmtState { enabled: boolean; split: boolean; linesPerFile: string }
+interface FormatSheetProps {
+  count: number; accent: string; type: string
+  onConfirm: (formats: { brut: boolean; specialTxt: boolean; specialXlsx: boolean }, splits: Record<string, number | null>) => void
+  onClose: () => void
+}
+
+function FormatSheet({ count, accent, type, onConfirm, onClose }: FormatSheetProps) {
+  const [brut,        setBrut]        = useState<FmtState>({ enabled: true,  split: false, linesPerFile: '' })
+  const [specialTxt,  setSpecialTxt]  = useState<FmtState>({ enabled: false, split: false, linesPerFile: '' })
+  const [specialXlsx, setSpecialXlsx] = useState<FmtState>({ enabled: false, split: false, linesPerFile: '' })
+
+  const toggle = (setter: React.Dispatch<React.SetStateAction<FmtState>>, field: keyof FmtState) =>
+    setter((p) => ({ ...p, [field]: !p[field] }))
+
+  const numFiles = (s: FmtState) => {
+    const n = parseInt(s.linesPerFile)
+    if (!s.split || !n || n <= 0) return 1
+    return Math.ceil(count / n)
+  }
+
+  const canConfirm = brut.enabled || specialTxt.enabled || specialXlsx.enabled
+
+  const confirm = () => {
+    const linesOrNull = (s: FmtState) => {
+      if (!s.split) return null
+      const n = parseInt(s.linesPerFile)
+      return n > 0 && n < count ? n : null
+    }
+    onConfirm(
+      { brut: brut.enabled, specialTxt: specialTxt.enabled, specialXlsx: specialXlsx.enabled },
+      { brut: linesOrNull(brut), specialTxt: linesOrNull(specialTxt), specialXlsx: linesOrNull(specialXlsx) },
+    )
+  }
+
+  const FormatRow = ({
+    label, sub, state, setter, showSplit = true,
+  }: {
+    label: string; sub?: string; state: FmtState
+    setter: React.Dispatch<React.SetStateAction<FmtState>>; showSplit?: boolean
+  }) => (
+    <div style={{ background: state.enabled ? `color-mix(in srgb, ${accent} 6%, #0d0d0d)` : '#0d0d0d', borderRadius: 12, border: `1px solid ${state.enabled ? accent + '30' : 'rgba(255,255,255,0.07)'}`, padding: '11px 13px', display: 'flex', flexDirection: 'column', gap: 10, transition: 'all 0.2s' }}>
+      <button onClick={() => toggle(setter, 'enabled')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+        <div style={{ textAlign: 'left' }}>
+          <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, fontWeight: 700, color: state.enabled ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>{label}</div>
+          {sub && <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 7, color: 'rgba(255,255,255,0.25)', marginTop: 2, letterSpacing: '0.08em' }}>{sub}</div>}
+        </div>
+        <div style={{ width: 40, height: 22, borderRadius: 11, background: state.enabled ? accent : 'rgba(255,255,255,0.1)', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+          <div style={{ position: 'absolute', top: 3, left: state.enabled ? 21 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+        </div>
+      </button>
+
+      {state.enabled && showSplit && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 9 }}>
+          <button onClick={() => toggle(setter, 'split')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            <div style={{ width: 14, height: 14, borderRadius: 3, border: `1.5px solid ${state.split ? accent : 'rgba(255,255,255,0.2)'}`, background: state.split ? `color-mix(in srgb, ${accent} 25%, transparent)` : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+              {state.split && <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 2.5L2.7 4L6 1" stroke={accent} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+            </div>
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 8, color: state.split ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)', letterSpacing: '0.1em' }}>DÉCOUPER EN PLUSIEURS FICHIERS</span>
+          </button>
+
+          {state.split && (
+            <div style={{ marginTop: 9, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="number" min={1} max={count - 1}
+                value={state.linesPerFile}
+                onChange={(e) => setter((p) => ({ ...p, linesPerFile: e.target.value }))}
+                placeholder="250"
+                style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: 'rgba(255,255,255,0.85)', outline: 'none', MozAppearance: 'textfield' } as React.CSSProperties}
+              />
+              <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 8, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>lignes/fichier</div>
+              {state.linesPerFile && parseInt(state.linesPerFile) > 0 && (
+                <div style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 15, color: accent, whiteSpace: 'nowrap', letterSpacing: '0.05em' }}>→ {numFiles(state)} fich.</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.75)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: '#0a0a0a', borderRadius: '20px 20px 0 0', padding: '0 0 32px', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.15)' }} />
+        </div>
+
+        {/* Header */}
+        <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 18, color: '#fff', letterSpacing: '0.06em' }}>OPTIONS D'EXTRACTION</div>
+            <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{count.toLocaleString('fr-FR')} lignes • {type}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </div>
+
+        {/* Formats */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 2 }}>CHOISIR LES FORMATS (min. 1)</div>
+          <FormatRow label="FICHIER BRUT (.txt)" sub="Colonnes séparées par virgule" state={brut} setter={setBrut} />
+          <FormatRow label="SPÉCIAL TXT (emojis)" sub="Format formaté avec icônes" state={specialTxt} setter={setSpecialTxt} />
+          <FormatRow label="SPÉCIAL XLSX (Excel)" sub="Colonnes NUMBER (+33) et NAME" state={specialXlsx} setter={setSpecialXlsx} showSplit />
+        </div>
+
+        {/* Confirm */}
+        <div style={{ padding: '0 14px' }}>
+          <button
+            onClick={confirm}
+            disabled={!canConfirm}
+            style={{
+              width: '100%', height: 48, borderRadius: 13,
+              cursor: canConfirm ? 'pointer' : 'not-allowed',
+              border: `1px solid ${canConfirm ? accent : 'rgba(255,255,255,0.08)'}`,
+              background: canConfirm ? `color-mix(in srgb, ${accent} 15%, transparent)` : 'rgba(255,255,255,0.03)',
+              color: canConfirm ? accent : 'rgba(255,255,255,0.2)',
+              fontFamily: '"Bebas Neue", sans-serif', fontSize: 17, letterSpacing: '0.1em', transition: 'all 0.2s',
+            }}
+          >
+            CONFIRMER L'EXTRACTION
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type DataType = 'FICHE' | 'NUMLIST' | 'MAILLIST'
@@ -196,6 +326,7 @@ export default function ExtractionPage() {
   const [selectedBanks, setSelectedBanks] = useState<Set<string>>(new Set())
   const [gender,        setGender]        = useState<Gender>('ALL')
   const [withNames,     setWithNames]     = useState(false)
+  const [showFmtSheet,  setShowFmtSheet]  = useState(false)
   const [debouncedQ,    setDebouncedQ]    = useState({ fileIds: [] as number[], type: apiType, dobFrom: '', dobTo: '', departments: [] as string[], banks: [] as string[], gender: 'ALL' as Gender })
 
   const toggleBank = useCallback((bank: string) => {
@@ -256,18 +387,23 @@ export default function ExtractionPage() {
   const resetFilters = () => { setYearFrom(''); setYearTo(''); setDeptRaw(''); setSelectedBanks(new Set()); setGender('ALL') }
 
   const extractMutation = useMutation({
-    mutationFn: () => api.post('/api/data-orders/extract', {
-      fileIds: Array.from(selectedIds), type: apiType,
-      dobFrom: yearFrom ? `${yearFrom}-01-01` : undefined,
-      dobTo:   yearTo   ? `${yearTo}-12-31`   : undefined,
-      departments: deptRaw.split(',').map((s) => s.trim()).filter(Boolean),
-      banks: Array.from(selectedBanks),
-      gender: gender !== 'ALL' ? gender : undefined,
-      withNames,
-    }).then((r) => r.data),
-    onSuccess: (data) => {
-      navigate(`/mes-extractions`)
-    },
+    mutationFn: (opts: { formats: { brut: boolean; specialTxt: boolean; specialXlsx: boolean }; splits: Record<string, number | null> }) =>
+      api.post('/api/data-orders/extract', {
+        fileIds: Array.from(selectedIds), type: apiType,
+        dobFrom: yearFrom ? `${yearFrom}-01-01` : undefined,
+        dobTo:   yearTo   ? `${yearTo}-12-31`   : undefined,
+        departments: deptRaw.split(',').map((s) => s.trim()).filter(Boolean),
+        banks: Array.from(selectedBanks),
+        gender: gender !== 'ALL' ? gender : undefined,
+        withNames,
+        formats: opts.formats,
+        splits: {
+          brut:        { linesPerFile: opts.splits.brut ?? null },
+          specialTxt:  { linesPerFile: opts.splits.specialTxt ?? null },
+          specialXlsx: { linesPerFile: opts.splits.specialXlsx ?? null },
+        },
+      }).then((r) => r.data),
+    onSuccess: () => navigate('/mes-extractions'),
   })
 
   const canExtract = selectedIds.size > 0 && count > 0 && !extractMutation.isPending
@@ -383,7 +519,7 @@ export default function ExtractionPage() {
           </div>
         )}
         <button
-          onClick={() => extractMutation.mutate()}
+          onClick={() => canExtract && setShowFmtSheet(true)}
           disabled={!canExtract}
           style={{
             width: '100%', height: 48, borderRadius: 13,
@@ -403,6 +539,20 @@ export default function ExtractionPage() {
             : `EXTRAIRE  ${fmt(count)}  LIGNE${count > 1 ? 'S' : ''}`}
         </button>
       </div>
+
+      {/* Format Sheet */}
+      {showFmtSheet && (
+        <FormatSheet
+          count={count}
+          accent={accent}
+          type={apiType}
+          onClose={() => setShowFmtSheet(false)}
+          onConfirm={(formats, splits) => {
+            setShowFmtSheet(false)
+            extractMutation.mutate({ formats, splits })
+          }}
+        />
+      )}
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');

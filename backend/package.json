@@ -19,6 +19,7 @@
     "floramini-types": "*",
     "grammy": "^1.21.0",
     "jsonwebtoken": "^9.0.0",
+    "xlsx": "^0.20.3",
     "zod": "^3.22.0"
   },
   "devDependencies": {

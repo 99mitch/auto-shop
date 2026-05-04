@@ -5,7 +5,7 @@ import { api } from '../lib/api'
 import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 
 interface OrderFile {
-  id: number; fileType: 'RAW' | 'SPECIAL'; filename: string; createdAt: string
+  id: number; fileType: 'BRUT' | 'SPECIAL_TXT' | 'SPECIAL_XLSX'; filename: string; partNumber: number | null; createdAt: string
 }
 interface DataOrder {
   id: number; type: string; status: string; withNames: boolean; lineCount: number; createdAt: string
@@ -66,24 +66,29 @@ function OrderCard({ order }: { order: DataOrder }) {
 
       {/* Files */}
       <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {order.files.map((f) => (
-          <button key={f.id} onClick={() => downloadFile(f)} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 9, padding: '8px 12px', cursor: 'pointer',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14 }}>{f.fileType === 'RAW' ? '📄' : '✨'}</span>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.7)', letterSpacing: '0.06em' }}>
-                  {f.fileType === 'RAW' ? 'FICHIER BRUT' : 'FORMAT SPÉCIAL'}
+        {order.files.map((f) => {
+          const icon  = f.fileType === 'BRUT' ? '📄' : f.fileType === 'SPECIAL_TXT' ? '✨' : '📊'
+          const label = f.fileType === 'BRUT' ? 'FICHIER BRUT' : f.fileType === 'SPECIAL_TXT' ? 'SPÉCIAL TXT' : 'SPÉCIAL XLSX'
+          const part  = f.partNumber ? ` • Partie ${f.partNumber}` : ''
+          return (
+            <button key={f.id} onClick={() => downloadFile(f)} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 9, padding: '8px 12px', cursor: 'pointer',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 14 }}>{icon}</span>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.7)', letterSpacing: '0.06em' }}>
+                    {label}{part}
+                  </div>
+                  <div style={{ fontSize: 7, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>{f.filename}</div>
                 </div>
-                <div style={{ fontSize: 7, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>{f.filename}</div>
               </div>
-            </div>
-            <span style={{ fontSize: 10, color: accent, fontFamily: '"JetBrains Mono", monospace', fontWeight: 700 }}>↓</span>
-          </button>
-        ))}
+              <span style={{ fontSize: 10, color: accent, fontFamily: '"JetBrains Mono", monospace', fontWeight: 700 }}>↓</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Send via Telegram */}
