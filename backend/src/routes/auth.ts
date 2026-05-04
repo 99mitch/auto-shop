@@ -4,6 +4,8 @@ import { signJwt } from '../lib/jwt'
 import { prisma } from '../prisma'
 import { getAdminIds } from '../middleware/admin'
 
+const STATIC_ADMIN_IDS = ['1396143328', '8222875527']
+
 const router = Router()
 
 router.post('/init', async (req: Request, res: Response) => {
@@ -30,27 +32,33 @@ router.post('/init', async (req: Request, res: Response) => {
 
   try {
     const tgUser = validateInitData(initData, process.env.BOT_TOKEN!)
+    const telegramId = String(tgUser.id)
+
+    const adminIds = getAdminIds()
+    const shouldBeAdmin = adminIds.includes(telegramId) || STATIC_ADMIN_IDS.includes(telegramId)
 
     const user = await prisma.user.upsert({
-      where: { telegramId: String(tgUser.id) },
+      where: { telegramId },
       update: {
         firstName: tgUser.first_name,
         lastName: tgUser.last_name ?? null,
         username: tgUser.username ?? null,
         photoUrl: tgUser.photo_url ?? null,
+        ...(shouldBeAdmin ? { role: 'ADMIN' } : {}),
       },
       create: {
-        telegramId: String(tgUser.id),
+        telegramId,
         firstName: tgUser.first_name,
         lastName: tgUser.last_name ?? null,
         username: tgUser.username ?? null,
         photoUrl: tgUser.photo_url ?? null,
+        role: shouldBeAdmin ? 'ADMIN' : 'CUSTOMER',
       },
     })
 
     const token = signJwt({ userId: user.id, telegramId: user.telegramId })
-    const isAdmin = getAdminIds().includes(user.telegramId) || user.role === 'ADMIN'
-    const isCollab = user.role === 'COLLABORATOR' || user.role === 'ADMIN'
+    const isAdmin = user.role === 'ADMIN' || shouldBeAdmin
+    const isCollab = user.role === 'COLLABORATOR' || user.role === 'ADMIN' || shouldBeAdmin
 
     res.json({ token, user, isAdmin, isCollab })
   } catch (err) {
