@@ -17,6 +17,7 @@ export interface User {
   photoUrl: string | null
   createdAt: string
   role: UserRole
+  balance: number
 }
 
 export interface Address {
@@ -139,4 +140,45 @@ export interface AdminStats {
 export interface Settings {
   deliveryFee: number
   timeSlots: string[]
+}
+
+export type PreOrderStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'FULFILLED'
+export type PaymentMethod = 'BALANCE' | 'CRYPTO'
+
+export interface BalanceTopUp {
+  id: number
+  userId: number
+  paymentId: string
+  amount: number
+  status: 'PENDING' | 'CONFIRMED'
+  createdAt: string
+}
+
+export interface PreOrder {
+  id: number
+  userId: number
+  user?: User
+  status: PreOrderStatus
+  bank: string | null
+  department: string | null
+  ageRange: string | null
+  bin: string | null
+  level: string | null
+  cardType: string | null
+  network: string | null
+  paymentMethod: PaymentMethod
+  quantity: number
+  pricePerCard: number
+  total: number
+  fulfilled: number
+  cryptoPaymentId: string | null
+  cryptoPaid: boolean
+  createdAt: string
+}
+
+export interface CryptoPaymentInfo {
+  paymentId: string
+  walletAddress: string
+  qrCode: string
+  expiresAt: string
 }
