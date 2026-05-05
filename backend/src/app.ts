@@ -11,6 +11,9 @@ import webhookRouter from './routes/webhook'
 import deliverRouter from './routes/deliver'
 import donneesRouter from './routes/donnees'
 import dataOrdersRouter from './routes/dataOrders'
+import balanceRouter from './routes/balance'
+import cryptoWebhookRouter from './routes/cryptoWebhook'
+import preordersRouter from './routes/preorders'
 
 export const app = express()
 
@@ -31,6 +34,9 @@ app.use('/api/collab', collabRouter)
 app.use('/api/deliver', deliverRouter)
 app.use('/api/donnees', donneesRouter)
 app.use('/api/data-orders', dataOrdersRouter)
+app.use('/api/balance', balanceRouter)
+app.use('/api/crypto/webhook', cryptoWebhookRouter)
+app.use('/api/preorders', preordersRouter)
 app.use('/webhook', webhookRouter)
 
 app.get('/health', (_req, res) => res.json({ ok: true }))
