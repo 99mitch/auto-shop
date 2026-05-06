@@ -14,6 +14,7 @@ import dataOrdersRouter from './routes/dataOrders'
 import balanceRouter from './routes/balance'
 import cryptoWebhookRouter from './routes/cryptoWebhook'
 import preordersRouter from './routes/preorders'
+import webAdminRouter from './routes/web-admin/index'
 
 export const app = express()
 
@@ -37,6 +38,7 @@ app.use('/api/data-orders', dataOrdersRouter)
 app.use('/api/balance', balanceRouter)
 app.use('/api/crypto/webhook', cryptoWebhookRouter)
 app.use('/api/preorders', preordersRouter)
+app.use('/api/web-admin', webAdminRouter)
 app.use('/webhook', webhookRouter)
 
 app.get('/health', (_req, res) => res.json({ ok: true }))
