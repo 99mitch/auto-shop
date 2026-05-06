@@ -144,6 +144,7 @@ export interface Settings {
 
 export type PreOrderStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'FULFILLED'
 export type PaymentMethod = 'BALANCE' | 'CRYPTO'
+export type CryptoCurrency = 'USDT' | 'ETH' | 'SOL'
 
 export interface BalanceTopUp {
   id: number

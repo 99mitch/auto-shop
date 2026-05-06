@@ -22,15 +22,20 @@ router.get('/', async (req: AuthRequest, res) => {
 router.post('/topup', async (req: AuthRequest, res) => {
   const amount = parseFloat(req.body.amount)
   if (!isFinite(amount) || amount < 1) {
-    res.status(400).json({ error: 'Montant minimum : 1 USDT' })
+    res.status(400).json({ error: 'Montant minimum : 1' })
     return
   }
+
+  const rawCurrency = req.body?.currency as string | undefined
+  const currency = (['USDT', 'ETH', 'SOL'] as const).includes(rawCurrency as any)
+    ? (rawCurrency as 'USDT' | 'ETH' | 'SOL')
+    : 'USDT'
 
   try {
     const payment = await createCryptoPayment(amount, `Recharge solde utilisateur #${req.userId}`, {
       type: 'topup',
       userId: req.userId!,
-    })
+    }, currency)
 
     const topUp = await prisma.balanceTopUp.create({
       data: { userId: req.userId!, paymentId: payment.paymentId, amount, status: 'PENDING' },

@@ -152,6 +152,11 @@ router.post('/:id/pay', async (req: AuthRequest, res) => {
     return
   }
 
+  const rawCurrency = req.body?.cryptoCurrency as string | undefined
+  const cryptoCurrency = (['USDT', 'ETH', 'SOL'] as const).includes(rawCurrency as any)
+    ? (rawCurrency as 'USDT' | 'ETH' | 'SOL')
+    : 'USDT'
+
   try {
     if (paymentMethod === 'BALANCE') {
       if (order.user.balance < order.total) {
@@ -176,7 +181,7 @@ router.post('/:id/pay', async (req: AuthRequest, res) => {
       type: 'order',
       refId: id,
       userId: req.userId!,
-    })
+    }, cryptoCurrency)
     await prisma.order.update({ where: { id }, data: { paymentMethod: 'CRYPTO', cryptoPaymentId: payment.paymentId } })
     res.json({ cryptoPayment: payment })
   } catch (err) {

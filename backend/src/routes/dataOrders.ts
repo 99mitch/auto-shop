@@ -36,7 +36,7 @@ function lockData(typeUp: ExtractionType) {
 
 // POST /api/data-orders/extract
 router.post('/extract', async (req: AuthRequest, res) => {
-  const { fileIds, type, dobFrom, dobTo, departments, banks, gender, withNames, formats, splits, paymentMethod } = req.body as {
+  const { fileIds, type, dobFrom, dobTo, departments, banks, gender, withNames, formats, splits, paymentMethod, cryptoCurrency: rawDataCurrency } = req.body as {
     fileIds: number[]
     type: string
     dobFrom?: string
@@ -48,7 +48,11 @@ router.post('/extract', async (req: AuthRequest, res) => {
     formats: Formats
     splits: Splits
     paymentMethod?: 'BALANCE' | 'CRYPTO'
+    cryptoCurrency?: string
   }
+  const dataCurrency = (['USDT', 'ETH', 'SOL'] as const).includes(rawDataCurrency as any)
+    ? (rawDataCurrency as 'USDT' | 'ETH' | 'SOL')
+    : 'USDT'
 
   if (!Array.isArray(fileIds) || fileIds.length === 0)
     return res.status(400).json({ error: 'No files selected' })
@@ -135,9 +139,10 @@ router.post('/extract', async (req: AuthRequest, res) => {
       // Créer le paiement crypto — les fichiers sont déjà en DB, livraison par webhook
       try {
         const payment = await createCryptoPayment(
-          records.length * 0.1, // prix fixe : 0.10€ par ligne (à ajuster)
+          records.length * 0.1,
           `Extraction ${typeUp} #${order.id}`,
-          { type: 'data-order', refId: order.id, userId: req.userId! }
+          { type: 'data-order', refId: order.id, userId: req.userId! },
+          dataCurrency
         )
         await prisma.dataOrder.update({
           where: { id: order.id },

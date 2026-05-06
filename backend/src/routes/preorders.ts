@@ -45,6 +45,11 @@ router.post('/', async (req: AuthRequest, res) => {
   const { paymentMethod, quantity, pricePerCard, ...filters } = parsed.data
   const total = quantity * pricePerCard
 
+  const rawCurrency = req.body?.cryptoCurrency as string | undefined
+  const cryptoCurrency = (['USDT', 'ETH', 'SOL'] as const).includes(rawCurrency as any)
+    ? (rawCurrency as 'USDT' | 'ETH' | 'SOL')
+    : 'USDT'
+
   if (paymentMethod === 'BALANCE') {
     const user = await prisma.user.findUnique({ where: { id: req.userId! } })
     if (!user || user.balance < total) {
@@ -71,7 +76,7 @@ router.post('/', async (req: AuthRequest, res) => {
       type: 'preorder',
       refId: preorder.id,
       userId: req.userId!,
-    })
+    }, cryptoCurrency)
     await prisma.preOrder.update({ where: { id: preorder.id }, data: { cryptoPaymentId: payment.paymentId } })
     res.status(201).json({ preorder, cryptoPayment: payment })
   } catch (err) {

@@ -17,9 +17,10 @@ export interface CryptoPaymentResult {
 export async function createCryptoPayment(
   amount: number,
   description: string,
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
+  currency: 'USDT' | 'ETH' | 'SOL' = 'USDT'
 ): Promise<CryptoPaymentResult> {
-  const { data } = await client.post('/api/payments', { amount, description, metadata })
+  const { data } = await client.post('/api/payments', { amount, description, metadata, currency })
   return data.payment
 }
 

@@ -9,6 +9,13 @@ type CardLevel = 'CLASSIC' | 'GOLD' | 'PLATINUM' | 'BLACK'
 type CardNetwork = 'VISA' | 'MASTERCARD' | 'AMEX' | 'OTHER'
 type CardType = 'DEBIT' | 'CREDIT'
 type AgeRange = '18-30' | '31-45' | '46-60' | '61+'
+type CryptoCurrency = 'USDT' | 'ETH' | 'SOL'
+
+const CURRENCIES = [
+  { value: 'USDT' as CryptoCurrency, label: 'USDT TRC-20' },
+  { value: 'ETH'  as CryptoCurrency, label: 'ETH' },
+  { value: 'SOL'  as CryptoCurrency, label: 'SOL' },
+]
 
 const GOLD = '#fbbf24'
 const MONO: React.CSSProperties = { fontFamily: '"JetBrains Mono", monospace' }
@@ -28,6 +35,7 @@ const TYPE_COLORS: Record<CardType, string> = { DEBIT: '#facc15', CREDIT: '#4ade
 export default function PreOrderPage() {
   const navigate = useNavigate()
   const [paymentMethod, setPaymentMethod] = useState<'BALANCE' | 'CRYPTO'>('BALANCE')
+  const [cryptoCurrency, setCryptoCurrency] = useState<CryptoCurrency>('USDT')
   const [quantity, setQuantity] = useState('1')
   const [pricePerCard, setPricePerCard] = useState('')
   const [bank, setBank] = useState('')
@@ -52,7 +60,7 @@ export default function PreOrderPage() {
   const mutation = useMutation({
     mutationFn: () =>
       api.post('/api/preorders', {
-        paymentMethod, quantity: parseInt(quantity), pricePerCard: parseFloat(pricePerCard),
+        paymentMethod, cryptoCurrency, quantity: parseInt(quantity), pricePerCard: parseFloat(pricePerCard),
         ...(bank ? { bank } : {}),
         ...(department ? { department } : {}),
         ...(bin ? { bin } : {}),
@@ -105,9 +113,10 @@ export default function PreOrderPage() {
   }
 
   if (cryptoPayment) {
+    const currencyLabel = CURRENCIES.find((c) => c.value === cryptoCurrency)?.label ?? cryptoCurrency
     return (
       <div style={{ background: '#050505', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
-        <div style={{ ...MONO, fontSize: 8, letterSpacing: '0.2em', color: 'rgba(251,191,36,0.6)' }}>PAYER EN USDT TRC-20</div>
+        <div style={{ ...MONO, fontSize: 8, letterSpacing: '0.2em', color: 'rgba(251,191,36,0.6)' }}>ENVOIE {currencyLabel} À CETTE ADRESSE</div>
         <img src={cryptoPayment.qrCode} alt="QR" style={{ width: 180, height: 180, borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }} />
         <div style={{ ...MONO, fontSize: 9, color: '#fff', wordBreak: 'break-all', textAlign: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8 }}>{cryptoPayment.walletAddress}</div>
         <div style={{ ...BEBAS, fontSize: 24, color: GOLD }}>€{total.toFixed(2)} USDT</div>
@@ -154,19 +163,41 @@ export default function PreOrderPage() {
 
           <div>
             <div style={{ ...LABEL, marginBottom: 6 }}>Mode de paiement</div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: paymentMethod === 'CRYPTO' ? 8 : 0 }}>
               {(['BALANCE', 'CRYPTO'] as const).map((m) => {
                 const active = paymentMethod === m
                 return (
                   <button key={m} onClick={() => setPaymentMethod(m)} style={{ flex: 1, padding: '8px', borderRadius: 9, cursor: 'pointer', border: `1px solid ${active ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.07)'}`, background: active ? 'rgba(251,191,36,0.08)' : 'transparent' }}>
                     <div style={{ ...MONO, fontSize: 9, fontWeight: 700, color: active ? GOLD : 'rgba(255,255,255,0.3)', letterSpacing: '0.08em' }}>{m === 'BALANCE' ? 'SOLDE' : 'CRYPTO'}</div>
                     <div style={{ ...MONO, fontSize: 8, color: 'rgba(255,255,255,0.2)', marginTop: 2 }}>
-                      {m === 'BALANCE' ? `€${balance.toFixed(2)} dispo` : 'QR USDT'}
+                      {m === 'BALANCE' ? `€${balance.toFixed(2)} dispo` : 'QR code'}
                     </div>
                   </button>
                 )
               })}
             </div>
+            {paymentMethod === 'CRYPTO' && (
+              <div style={{ display: 'flex', gap: 6 }}>
+                {CURRENCIES.map((c) => {
+                  const active = cryptoCurrency === c.value
+                  return (
+                    <button
+                      key={c.value}
+                      onClick={() => setCryptoCurrency(c.value)}
+                      style={{
+                        flex: 1, padding: '7px 4px', borderRadius: 8, cursor: 'pointer',
+                        background: active ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${active ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.07)'}`,
+                        ...MONO, fontSize: 8, fontWeight: 700,
+                        color: active ? GOLD : 'rgba(255,255,255,0.3)', letterSpacing: '0.05em',
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
