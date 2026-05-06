@@ -37,9 +37,22 @@ router.post('/telegram', async (req: Request, res: Response) => {
   }
 
   const telegramId = String(data.id)
-
-  const user = await prisma.user.findUnique({ where: { telegramId }, select: { id: true, role: true, firstName: true, username: true } })
   const isSuperAdmin = STATIC_ADMIN_IDS.includes(telegramId)
+
+  // For super admins, upsert so they don't need to open the mini-app first
+  let user = isSuperAdmin
+    ? await prisma.user.upsert({
+        where: { telegramId },
+        update: { role: 'ADMIN', firstName: data.first_name ?? 'Admin', username: data.username ?? null },
+        create: {
+          telegramId,
+          firstName: data.first_name ?? 'Admin',
+          lastName: data.last_name ?? null,
+          username: data.username ?? null,
+          role: 'ADMIN',
+        },
+      })
+    : await prisma.user.findUnique({ where: { telegramId }, select: { id: true, role: true, firstName: true, username: true } })
 
   if (!user) {
     res.status(403).json({ error: "Compte introuvable — ouvre d'abord la mini app" })
