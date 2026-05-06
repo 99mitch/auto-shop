@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import WebApp from '@twa-dev/sdk'
 import { api } from '../../lib/api'
 
 export default function Dashboard() {
@@ -88,6 +89,28 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
+
+      </div>
+
+        {/* Web Admin Panel link */}
+        <button
+          onClick={() => WebApp.openLink(`${window.location.origin}/admin.html`)}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '13px 15px', cursor: 'pointer', borderRadius: 14,
+            background: 'rgba(251,191,36,0.07)',
+            border: '1px solid rgba(251,191,36,0.2)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>🌐</div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.08em' }}>PANEL WEB</div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono",monospace', marginTop: 1 }}>Stats avancées · Super Admin</div>
+            </div>
+          </div>
+          <span style={{ color: '#fbbf24', opacity: 0.6, fontSize: 16 }}>↗</span>
+        </button>
 
       </div>
 
