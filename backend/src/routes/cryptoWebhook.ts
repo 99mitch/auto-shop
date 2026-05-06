@@ -46,8 +46,9 @@ async function notifyAdminsPreOrder(preOrderId: number): Promise<void> {
 }
 
 router.post('/', async (req: Request, res: Response) => {
-  const signature = req.headers['x-webhook-signature'] as string
-  if (signature && !verifySignature(req.body, signature)) {
+  const signature = req.headers['x-webhook-signature'] as string | undefined
+  const secret = process.env.WEBHOOK_SECRET || ''
+  if (secret && (!signature || !verifySignature(req.body, signature))) {
     res.status(401).json({ error: 'Invalid signature' })
     return
   }
