@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../../prisma'
 import { CreateProductSchema, UpdateProductSchema } from 'floramini-types'
+import { matchAndDeliver } from '../../lib/preorderMatcher'
 
 const router = Router()
 
@@ -93,6 +94,7 @@ router.post('/:id/inventory/bulk', async (req, res) => {
   // Sync stock to unsold count
   const unsold = await prisma.cardInventory.count({ where: { productId, sold: false } })
   await prisma.product.update({ where: { id: productId }, data: { stock: unsold } })
+  matchAndDeliver(productId).catch((err) => console.warn('[matcher] Error:', err))
   res.json({ added: valid.length, stock: unsold })
 })
 
