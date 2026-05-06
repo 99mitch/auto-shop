@@ -10,8 +10,9 @@ export const CreateOrderSchema = z.object({
       zip: z.string().min(1),
     })
     .optional(),
-  deliverySlot: z.string().min(1),
+  deliverySlot: z.string().optional().default(''),
   note: z.string().optional(),
+  paymentMethod: z.enum(['BALANCE', 'CRYPTO']).optional().default('BALANCE'),
   items: z
     .array(
       z.object({
@@ -67,9 +68,23 @@ export const BulkInventorySchema = z.object({
 })
 export type BulkInventoryInput = z.infer<typeof BulkInventorySchema>
 
+export const CreatePreOrderSchema = z.object({
+  paymentMethod: z.enum(['BALANCE', 'CRYPTO']),
+  quantity: z.number().int().min(1).max(100),
+  pricePerCard: z.number().positive(),
+  bank: z.string().optional(),
+  department: z.string().max(3).optional(),
+  ageRange: z.enum(['18-30', '31-45', '46-60', '61+']).optional(),
+  bin: z.string().max(6).regex(/^\d{1,6}$/).optional(),
+  level: z.enum(['CLASSIC', 'GOLD', 'PLATINUM', 'BLACK']).optional(),
+  cardType: z.enum(['DEBIT', 'CREDIT']).optional(),
+  network: z.enum(['VISA', 'MASTERCARD', 'AMEX', 'OTHER']).optional(),
+})
+
 export type CreateOrderInput = z.infer<typeof CreateOrderSchema>
 export type CreateAddressInput = z.infer<typeof CreateAddressSchema>
 export type UpdateOrderStatusInput = z.infer<typeof UpdateOrderStatusSchema>
 export type CreateProductInput = z.infer<typeof CreateProductSchema>
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>
 export type UpdateSettingsInput = z.infer<typeof UpdateSettingsSchema>
+export type CreatePreOrderInput = z.infer<typeof CreatePreOrderSchema>

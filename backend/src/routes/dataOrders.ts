@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { prisma } from '../prisma'
 import { bot } from '../bot'
 import { notify } from '../lib/notify'
+import { createCryptoPayment } from '../lib/cryptoApi'
 import {
   generateBrut,
   generateSpecialTxt,
@@ -35,7 +36,7 @@ function lockData(typeUp: ExtractionType) {
 
 // POST /api/data-orders/extract
 router.post('/extract', async (req: AuthRequest, res) => {
-  const { fileIds, type, dobFrom, dobTo, departments, banks, gender, withNames, formats, splits } = req.body as {
+  const { fileIds, type, dobFrom, dobTo, departments, banks, gender, withNames, formats, splits, paymentMethod, cryptoCurrency: rawDataCurrency } = req.body as {
     fileIds: number[]
     type: string
     dobFrom?: string
@@ -46,7 +47,12 @@ router.post('/extract', async (req: AuthRequest, res) => {
     withNames?: boolean
     formats: Formats
     splits: Splits
+    paymentMethod?: 'BALANCE' | 'CRYPTO'
+    cryptoCurrency?: string
   }
+  const dataCurrency = (['USDT', 'ETH', 'SOL'] as const).includes(rawDataCurrency as any)
+    ? (rawDataCurrency as 'USDT' | 'ETH' | 'SOL')
+    : 'USDT'
 
   if (!Array.isArray(fileIds) || fileIds.length === 0)
     return res.status(400).json({ error: 'No files selected' })
@@ -129,13 +135,33 @@ router.post('/extract', async (req: AuthRequest, res) => {
       },
     })
 
+    if (paymentMethod === 'CRYPTO') {
+      // Créer le paiement crypto — les fichiers sont déjà en DB, livraison par webhook
+      try {
+        const payment = await createCryptoPayment(
+          records.length * 0.1,
+          `Extraction ${typeUp} #${order.id}`,
+          { type: 'data-order', refId: order.id, userId: req.userId! },
+          dataCurrency
+        )
+        await prisma.dataOrder.update({
+          where: { id: order.id },
+          data: { status: 'PENDING_PAYMENT', cryptoPaymentId: payment.paymentId },
+        })
+        return res.json({ orderId: order.id, lineCount: records.length, cryptoPayment: payment })
+      } catch (err) {
+        console.error('[dataOrders] crypto payment error:', err)
+        // Si crypto échoue, livrer quand même (fallback)
+      }
+    }
+
+    // Paiement BALANCE ou fallback : notifier immédiatement
     if (user?.telegramId) {
       notify(
         user.telegramId,
         `✅ Extraction prête — ${records.length} lignes ${typeUp}\nRécupère-la dans Mes Extractions`,
       ).catch(() => {})
     }
-
     res.json({ orderId: order.id, lineCount: records.length })
   } catch (err) {
     console.error(err)

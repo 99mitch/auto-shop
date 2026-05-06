@@ -2,7 +2,8 @@ import { Router } from 'express'
 import { prisma } from '../prisma'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { CreateOrderSchema } from 'floramini-types'
-import { notifyOrderStatus, deliverCards } from '../lib/notify'
+import { fulfillCCOrder } from '../lib/fulfillment'
+import { createCryptoPayment } from '../lib/cryptoApi'
 
 const router = Router()
 
@@ -130,7 +131,6 @@ router.get('/:id', async (req: AuthRequest, res) => {
 })
 
 router.post('/:id/pay', async (req: AuthRequest, res) => {
-  // TODO: integrate crypto payment API
   const id = parseInt(req.params.id)
   if (isNaN(id)) {
     res.status(400).json({ error: 'Invalid order id' })
@@ -139,62 +139,55 @@ router.post('/:id/pay', async (req: AuthRequest, res) => {
 
   const order = await prisma.order.findFirst({
     where: { id, userId: req.userId!, status: 'PENDING' },
-    include: { items: { include: { product: { select: { collaboratorId: true, name: true } } } } },
+    include: { user: true },
   })
-
   if (!order) {
     res.status(404).json({ error: 'Order not found or already processed' })
     return
   }
 
-  const updated = await prisma.order.update({
-    where: { id: order.id },
-    data: { status: 'CONFIRMED' },
-    include: { items: { include: { product: true } }, address: true },
-  })
+  const paymentMethod = req.body?.paymentMethod
+  if (paymentMethod !== 'BALANCE' && paymentMethod !== 'CRYPTO') {
+    res.status(400).json({ error: 'paymentMethod must be BALANCE or CRYPTO' })
+    return
+  }
 
-  // Dispatch collaborator commissions (20% platform, 80% collab)
-  const earningsToCreate = order.items
-    .filter((item) => item.product.collaboratorId !== null)
-    .map((item) => {
-      const gross = item.unitPrice * item.quantity
-      return {
-        orderId: order.id,
-        orderItemId: item.id,
-        collaboratorId: item.product.collaboratorId!,
-        amount: parseFloat((gross * 0.8).toFixed(2)),
-        platformFee: parseFloat((gross * 0.2).toFixed(2)),
+  const rawCurrency = req.body?.cryptoCurrency as string | undefined
+  const cryptoCurrency = (['USDT', 'ETH', 'SOL'] as const).includes(rawCurrency as any)
+    ? (rawCurrency as 'USDT' | 'ETH' | 'SOL')
+    : 'USDT'
+
+  try {
+    if (paymentMethod === 'BALANCE') {
+      if (order.user.balance < order.total) {
+        res.status(400).json({ error: 'Solde insuffisant' })
+        return
       }
-    })
-
-  if (earningsToCreate.length > 0) {
-    await prisma.collaboratorEarning.createMany({ data: earningsToCreate })
-  }
-
-  // Deliver CC inventory items
-  const deliveryCards: Array<{ productName: string; data: string }> = []
-  for (const item of order.items) {
-    const invItems = await prisma.cardInventory.findMany({
-      where: { productId: item.productId, sold: false },
-      take: item.quantity,
-      orderBy: { id: 'asc' },
-    })
-    if (invItems.length > 0) {
-      await prisma.cardInventory.updateMany({
-        where: { id: { in: invItems.map(i => i.id) } },
-        data: { sold: true, orderId: order.id },
+      await prisma.$transaction([
+        prisma.user.update({ where: { id: req.userId! }, data: { balance: { decrement: order.total } } }),
+        prisma.order.update({ where: { id }, data: { paymentMethod: 'BALANCE' } }),
+      ])
+      await fulfillCCOrder(id)
+      const updated = await prisma.order.findUnique({
+        where: { id },
+        include: { items: { include: { product: true } }, address: true },
       })
-      // Sync stock
-      const remaining = await prisma.cardInventory.count({ where: { productId: item.productId, sold: false } })
-      await prisma.product.update({ where: { id: item.productId }, data: { stock: remaining } })
-      invItems.forEach(inv => deliveryCards.push({ productName: (item as any).product?.name ?? 'Carte', data: inv.fullData }))
+      res.json({ ...updated, items: updated!.items.map((i: any) => ({ ...i, options: JSON.parse(i.options) })) })
+      return
     }
+
+    // CRYPTO
+    const payment = await createCryptoPayment(order.total, `Commande #${id}`, {
+      type: 'order',
+      refId: id,
+      userId: req.userId!,
+    }, cryptoCurrency)
+    await prisma.order.update({ where: { id }, data: { paymentMethod: 'CRYPTO', cryptoPaymentId: payment.paymentId } })
+    res.json({ cryptoPayment: payment })
+  } catch (err) {
+    console.error('[orders] pay error:', err)
+    res.status(500).json({ error: 'Erreur traitement paiement' })
   }
-  await deliverCards(req.telegramId!, order.id, deliveryCards)
-
-  notifyOrderStatus(req.telegramId!, order.id, 'CONFIRMED', order.total)
-
-  res.json(parseOrder(updated))
 })
 
 export default router

@@ -15,6 +15,7 @@ export default function Dashboard() {
   const navItems = [
     { label: 'CARTES', sub: 'Catalogue', path: '/admin/products', icon: '🃏', color: '#fbbf24' },
     { label: 'COMMANDES', sub: 'Historique', path: '/admin/orders', icon: '📦', color: 'rgba(251,191,36,0.7)' },
+    { label: 'PRÉCOMMANDES', sub: 'Demandes clients', path: '/admin/preorders', icon: '🎯', color: '#22d3ee' },
     { label: 'COLLABS', sub: 'Partenaires', path: '/admin/collaborators', icon: '◈', color: '#4ade80' },
     { label: 'RÉGLAGES', sub: 'Config', path: '/admin/settings', icon: '⚙', color: 'rgba(255,255,255,0.4)' },
   ]

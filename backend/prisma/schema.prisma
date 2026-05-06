@@ -15,8 +15,11 @@ model User {
   username     String?
   photoUrl     String?
   createdAt    DateTime              @default(now())
-  role         String                @default("CUSTOMER")
-  orders       Order[]
+  role          String                @default("CUSTOMER")
+  balance       Float                 @default(0)
+  balanceTopUps BalanceTopUp[]
+  preOrders     PreOrder[]
+  orders        Order[]
   dataOrders   DataOrder[]
   addresses    Address[]
   favorites    Favorite[]
@@ -74,8 +77,10 @@ model Order {
   deliveryFee   Float
   total         Float
   deliverySlot  String
-  createdAt     DateTime              @default(now())
-  items         OrderItem[]
+  createdAt       DateTime              @default(now())
+  paymentMethod   String?
+  cryptoPaymentId String?
+  items           OrderItem[]
   earnings      CollaboratorEarning[]
   cardInventory CardInventory[]
 }
@@ -186,8 +191,9 @@ model DataOrder {
   status    String            @default("READY")
   withNames Boolean           @default(false)
   lineCount Int
-  createdAt DateTime          @default(now())
-  records   DataOrderRecord[]
+  createdAt       DateTime          @default(now())
+  cryptoPaymentId String?
+  records         DataOrderRecord[]
   files     DataOrderFile[]
 }
 
@@ -209,4 +215,36 @@ model DataOrderFile {
   content    String
   partNumber Int?
   createdAt  DateTime  @default(now())
+}
+
+model BalanceTopUp {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  paymentId String   @unique
+  amount    Float
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model PreOrder {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id])
+  status          String   @default("PENDING")
+  bank            String?
+  department      String?
+  ageRange        String?
+  bin             String?
+  level           String?
+  cardType        String?
+  network         String?
+  paymentMethod   String
+  quantity        Int
+  pricePerCard    Float
+  total           Float
+  fulfilled       Int      @default(0)
+  cryptoPaymentId String?
+  cryptoPaid      Boolean  @default(false)
+  createdAt       DateTime @default(now())
 }
