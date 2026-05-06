@@ -146,29 +146,32 @@ router.post('/:id/pay', async (req: AuthRequest, res) => {
     return
   }
 
-  const paymentMethod = (req.body?.paymentMethod as string) || 'BALANCE'
-
-  if (paymentMethod === 'BALANCE') {
-    const user = await prisma.user.findUnique({ where: { id: req.userId! } })
-    if (!user || user.balance < order.total) {
-      res.status(400).json({ error: 'Solde insuffisant' })
-      return
-    }
-    await prisma.$transaction([
-      prisma.user.update({ where: { id: req.userId! }, data: { balance: { decrement: order.total } } }),
-      prisma.order.update({ where: { id }, data: { paymentMethod: 'BALANCE' } }),
-    ])
-    await fulfillCCOrder(id)
-    const updated = await prisma.order.findUnique({
-      where: { id },
-      include: { items: { include: { product: true } }, address: true },
-    })
-    res.json({ ...updated, items: updated!.items.map((i: any) => ({ ...i, options: JSON.parse(i.options) })) })
+  const paymentMethod = req.body?.paymentMethod
+  if (paymentMethod !== 'BALANCE' && paymentMethod !== 'CRYPTO') {
+    res.status(400).json({ error: 'paymentMethod must be BALANCE or CRYPTO' })
     return
   }
 
-  // CRYPTO
   try {
+    if (paymentMethod === 'BALANCE') {
+      if (order.user.balance < order.total) {
+        res.status(400).json({ error: 'Solde insuffisant' })
+        return
+      }
+      await prisma.$transaction([
+        prisma.user.update({ where: { id: req.userId! }, data: { balance: { decrement: order.total } } }),
+        prisma.order.update({ where: { id }, data: { paymentMethod: 'BALANCE' } }),
+      ])
+      await fulfillCCOrder(id)
+      const updated = await prisma.order.findUnique({
+        where: { id },
+        include: { items: { include: { product: true } }, address: true },
+      })
+      res.json({ ...updated, items: updated!.items.map((i: any) => ({ ...i, options: JSON.parse(i.options) })) })
+      return
+    }
+
+    // CRYPTO
     const payment = await createCryptoPayment(order.total, `Commande #${id}`, {
       type: 'order',
       refId: id,
@@ -176,8 +179,9 @@ router.post('/:id/pay', async (req: AuthRequest, res) => {
     })
     await prisma.order.update({ where: { id }, data: { paymentMethod: 'CRYPTO', cryptoPaymentId: payment.paymentId } })
     res.json({ cryptoPayment: payment })
-  } catch (err: any) {
-    res.status(500).json({ error: 'Erreur création paiement crypto' })
+  } catch (err) {
+    console.error('[orders] pay error:', err)
+    res.status(500).json({ error: 'Erreur traitement paiement' })
   }
 })
 

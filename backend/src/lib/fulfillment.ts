@@ -4,6 +4,13 @@ import { InputFile } from 'grammy'
 import { bot } from '../bot'
 
 export async function fulfillCCOrder(orderId: number): Promise<void> {
+  // Atomic status transition — prevents double-delivery under concurrent webhook calls
+  const { count } = await prisma.order.updateMany({
+    where: { id: orderId, status: { not: 'CONFIRMED' } },
+    data: { status: 'CONFIRMED' },
+  })
+  if (count === 0) return
+
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
@@ -11,9 +18,7 @@ export async function fulfillCCOrder(orderId: number): Promise<void> {
       items: { include: { product: { select: { collaboratorId: true, name: true } } } },
     },
   })
-  if (!order || order.status === 'CONFIRMED') return
-
-  await prisma.order.update({ where: { id: orderId }, data: { status: 'CONFIRMED' } })
+  if (!order) return
 
   const earningsToCreate = order.items
     .filter((item) => item.product.collaboratorId !== null)
@@ -31,7 +36,7 @@ export async function fulfillCCOrder(orderId: number): Promise<void> {
     await prisma.collaboratorEarning.createMany({ data: earningsToCreate })
   }
 
-  const deliveryCards_: Array<{ productName: string; data: string }> = []
+  const cards: Array<{ productName: string; data: string }> = []
   for (const item of order.items) {
     const invItems = await prisma.cardInventory.findMany({
       where: { productId: item.productId, sold: false },
@@ -45,24 +50,28 @@ export async function fulfillCCOrder(orderId: number): Promise<void> {
       })
       const remaining = await prisma.cardInventory.count({ where: { productId: item.productId, sold: false } })
       await prisma.product.update({ where: { id: item.productId }, data: { stock: remaining } })
-      invItems.forEach((inv) => deliveryCards_.push({ productName: item.product.name, data: inv.fullData }))
+      invItems.forEach((inv) => cards.push({ productName: item.product.name, data: inv.fullData }))
     }
   }
 
   if (order.user.telegramId) {
-    await deliverCards(order.user.telegramId, order.id, deliveryCards_)
+    await deliverCards(order.user.telegramId, order.id, cards)
     notifyOrderStatus(order.user.telegramId, order.id, 'CONFIRMED', order.total)
   }
 }
 
 export async function fulfillDataOrder(orderId: number): Promise<void> {
+  const { count } = await prisma.dataOrder.updateMany({
+    where: { id: orderId, status: { not: 'READY' } },
+    data: { status: 'READY' },
+  })
+  if (count === 0) return
+
   const order = await prisma.dataOrder.findUnique({
     where: { id: orderId },
     include: { user: true, files: { orderBy: [{ fileType: 'asc' }, { partNumber: 'asc' }] } },
   })
-  if (!order || order.status === 'READY') return
-
-  await prisma.dataOrder.update({ where: { id: orderId }, data: { status: 'READY' } })
+  if (!order) return
 
   if (!order.user.telegramId) return
 
