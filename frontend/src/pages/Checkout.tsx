@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useCartStore } from '../stores/cart'
 import { useTelegramMainButton } from '../hooks/useTelegramMainButton'
 import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
-import type { Order } from 'floramini-types'
+import type { Order, CryptoPaymentInfo } from 'floramini-types'
 import { MOCK_CARDS } from './Catalogue'
 
 export type Format = 'TXT' | 'JSON' | 'CSV' | 'MESSAGE'
@@ -80,6 +80,14 @@ export default function Checkout() {
   const navigate = useNavigate()
   const { items, note, subtotal, clear } = useCartStore()
   const [format, setFormat] = useState<Format>('MESSAGE')
+  const [paymentMethod, setPaymentMethod] = useState<'BALANCE' | 'CRYPTO'>('BALANCE')
+  const [cryptoPayment, setCryptoPayment] = useState<CryptoPaymentInfo | null>(null)
+
+  const { data: balanceData } = useQuery<{ balance: number }>({
+    queryKey: ['balance'],
+    queryFn: () => api.get('/api/balance').then((r) => r.data),
+  })
+  const balance = balanceData?.balance ?? 0
 
   const goBack = () => {
     if (window.history.state?.idx > 0) navigate(-1)
@@ -118,7 +126,11 @@ export default function Checkout() {
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, options: i.options })),
       }
       const order: Order = await api.post('/api/orders', body).then((r) => r.data)
-      await api.post(`/api/orders/${order.id}/pay`)
+      const payRes = await api.post(`/api/orders/${order.id}/pay`, { paymentMethod })
+      if (payRes.data?.cryptoPayment) {
+        setCryptoPayment(payRes.data.cryptoPayment)
+        return null
+      }
       return order
     },
     onSuccess: (order) => {
@@ -128,7 +140,7 @@ export default function Checkout() {
     },
   })
 
-  const canSubmit = items.length > 0 && !mutation.isPending
+  const canSubmit = items.length > 0 && !mutation.isPending && (isMock || paymentMethod === 'CRYPTO' || balance >= total)
 
   useTelegramMainButton(
     mutation.isPending ? 'TRAITEMENT...' : 'CONFIRMER LA COMMANDE',
@@ -165,7 +177,16 @@ export default function Checkout() {
         </div>
       </div>
 
-      {/* Scrollable content */}
+      {cryptoPayment && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
+          <div style={{ fontSize: 8, fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.2em', color: 'rgba(251,191,36,0.6)' }}>PAIEMENT EN ATTENTE</div>
+          <img src={cryptoPayment.qrCode} alt="QR" style={{ width: 180, height: 180, borderRadius: 12 }} />
+          <div style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', color: '#fff', wordBreak: 'break-all', textAlign: 'center' }}>{cryptoPayment.walletAddress}</div>
+          <div style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', color: 'rgba(255,255,255,0.3)' }}>La livraison se fait automatiquement après réception du paiement</div>
+        </div>
+      )}
+
+      {!cryptoPayment && (
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
         {/* Order recap */}
@@ -246,6 +267,40 @@ export default function Checkout() {
           </Section>
         )}
 
+        {!isMock && (
+          <div style={{ background: '#111', borderRadius: 12, border: '1px solid rgba(255,255,255,0.07)', padding: '14px', marginBottom: 10 }}>
+            <div style={{ fontSize: 8, fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>MODE DE PAIEMENT</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['BALANCE', 'CRYPTO'] as const).map((m) => {
+                const active = paymentMethod === m
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setPaymentMethod(m)}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: 10, cursor: 'pointer',
+                      background: active ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${active ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.07)'}`,
+                    }}
+                  >
+                    <div style={{ fontSize: 11, fontWeight: 700, color: active ? '#fbbf24' : 'rgba(255,255,255,0.4)', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.08em' }}>
+                      {m === 'BALANCE' ? 'SOLDE' : 'CRYPTO'}
+                    </div>
+                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', fontFamily: '"JetBrains Mono",monospace', marginTop: 3 }}>
+                      {m === 'BALANCE' ? `€${balance.toFixed(2)} dispo` : 'QR USDT TRC-20'}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            {paymentMethod === 'BALANCE' && balance < total && (
+              <div style={{ marginTop: 8, fontSize: 10, color: '#ef4444', fontFamily: '"JetBrains Mono",monospace' }}>
+                Solde insuffisant — recharge dans ton profil
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Total */}
         <div style={{
           background: '#111', borderRadius: 14,
@@ -268,6 +323,7 @@ export default function Checkout() {
         )}
 
       </div>
+      )}
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');
