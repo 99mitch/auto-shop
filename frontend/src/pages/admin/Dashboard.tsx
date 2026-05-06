@@ -48,12 +48,14 @@ export default function Dashboard() {
             { label: "AUJOURD'HUI", value: `€${(stats?.revenueToday ?? 0).toFixed(2)}`, sub: `${stats?.ordersToday ?? 0} ventes` },
             { label: "CARTES ACTIVES", value: String(stats?.productCount ?? '—'), sub: 'dans le catalogue' },
             { label: "COMMISSIONS", value: `€${(stats?.totalPlatformFees ?? 0).toFixed(2)}`, sub: 'part plateforme' },
+            { label: "UTILISATEURS", value: String(stats?.userCount ?? '—'), sub: 'sur le bot' },
           ].map((s, i) => (
             <div key={i} style={{
               background: '#111', borderRadius: 14,
               border: i === 0 ? '1px solid rgba(251,191,36,0.25)' : '1px solid rgba(255,255,255,0.07)',
               borderLeft: i === 0 ? '3px solid rgba(251,191,36,0.7)' : undefined,
               padding: '12px 14px',
+              gridColumn: i === 4 ? '1 / -1' : undefined,
             }}>
               <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.22)', fontFamily: '"JetBrains Mono",monospace', marginBottom: 4 }}>{s.label}</div>
               <div style={{ fontFamily: '"Bebas Neue","Impact",sans-serif', fontSize: i === 0 ? 26 : 22, color: '#fbbf24', letterSpacing: '0.04em', lineHeight: 1 }}>{s.value}</div>
