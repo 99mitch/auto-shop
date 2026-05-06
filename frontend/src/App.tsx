@@ -12,12 +12,16 @@ import OrderConfirmation from './pages/OrderConfirmation'
 import Orders from './pages/Orders'
 import OrderDetail from './pages/OrderDetail'
 import Profile from './pages/Profile'
+import Balance from './pages/Balance'
+import PreOrderPage from './pages/PreOrderPage'
+import MesPreCommandes from './pages/MesPreCommandes'
 import AdminGuard from './pages/admin/AdminGuard'
 import Dashboard from './pages/admin/Dashboard'
 import AdminOrders from './pages/admin/AdminOrders'
 import AdminProducts from './pages/admin/AdminProducts'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminCollaborators from './pages/admin/AdminCollaborators'
+import AdminPreOrders from './pages/admin/AdminPreOrders'
 import CollabDashboard from './pages/collab/CollabDashboard'
 import CollabGuard from './pages/collab/CollabGuard'
 import CollabAddCard from './pages/collab/CollabAddCard'
@@ -42,6 +46,9 @@ const router = createBrowserRouter([
       { path: 'orders', element: <Orders /> },
       { path: 'orders/:id', element: <OrderDetail /> },
       { path: 'profile', element: <Profile /> },
+      { path: 'balance', element: <Balance /> },
+      { path: 'precommande', element: <PreOrderPage /> },
+      { path: 'mes-precommandes', element: <MesPreCommandes /> },
       {
         path: 'collab',
         element: <CollabGuard />,
@@ -60,6 +67,7 @@ const router = createBrowserRouter([
           { path: 'products', element: <AdminProducts /> },
           { path: 'settings', element: <AdminSettings /> },
           { path: 'collaborators', element: <AdminCollaborators /> },
+          { path: 'preorders', element: <AdminPreOrders /> },
         ],
       },
     ],

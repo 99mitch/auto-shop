@@ -90,6 +90,8 @@ export default function Profile() {
             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.22)', fontFamily: '"JetBrains Mono", monospace', marginBottom: 6 }}>NAVIGATION</div>
           </div>
           <NavRow label="MES COMMANDES" icon="📦" onClick={() => navigate('/orders')} />
+          <NavRow label="MON SOLDE" icon="💰" onClick={() => navigate('/balance')} accent="gold" />
+          <NavRow label="MES PRÉCOMMANDES" icon="🎯" onClick={() => navigate('/mes-precommandes')} accent="cyan" />
           <NavRow label="MES EXTRACTIONS" icon="🗂" onClick={() => navigate('/mes-extractions')} accent="cyan" />
           {!authLoading && isAdmin && (
             <NavRow label="PANEL ADMIN" icon="⚙" onClick={() => navigate('/admin')} accent="gold" />
