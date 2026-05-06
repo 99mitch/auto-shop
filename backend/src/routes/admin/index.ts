@@ -7,6 +7,7 @@ import statsRouter from './stats'
 import settingsRouter from './settings'
 import collaboratorsRouter from './collaborators'
 import categoriesRouter from './categories'
+import preordersRouter from './preorders'
 
 const router = Router()
 
@@ -26,5 +27,6 @@ router.use('/stats', statsRouter)
 router.use('/settings', settingsRouter)
 router.use('/collaborators', collaboratorsRouter)
 router.use('/categories', categoriesRouter)
+router.use('/preorders', preordersRouter)
 
 export default router
