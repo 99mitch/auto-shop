@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../../prisma'
 import { AuthRequest } from '../../middleware/auth'
+import { matchAndDeliver } from '../../lib/preorderMatcher'
 
 const router = Router()
 
@@ -106,6 +107,10 @@ router.post('/:id/inventory/bulk', async (req: AuthRequest, res) => {
   await prisma.cardInventory.createMany({ data: valid.map(fullData => ({ productId, fullData })) })
   const unsold = await prisma.cardInventory.count({ where: { productId, sold: false } })
   await prisma.product.update({ where: { id: productId }, data: { stock: unsold } })
+
+  // Déclencher le matching des précommandes (fire-and-forget)
+  matchAndDeliver(productId).catch((err) => console.warn('[matcher] Error:', err))
+
   res.json({ added: valid.length, stock: unsold })
 })
 
