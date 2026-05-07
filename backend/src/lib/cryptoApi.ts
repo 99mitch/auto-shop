@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const client = axios.create({
-  baseURL: process.env.CRYPTO_API_URL || 'http://deploy-crypto-api-1:3000',
+  baseURL: process.env.CRYPTO_API_URL || 'http://127.0.0.1:3002',
   headers: { 'X-Admin-Key': process.env.CRYPTO_API_ADMIN_KEY || '' },
   timeout: 10_000,
 })
