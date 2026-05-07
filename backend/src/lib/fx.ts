@@ -6,7 +6,7 @@ const TTL_MS = 15 * 60 * 1000
 export async function getEurUsdRate(): Promise<number> {
   if (cachedRate && Date.now() - cachedRate.ts < TTL_MS) return cachedRate.value
   try {
-    const { data } = await axios.get('https://api.frankfurter.app/latest?from=EUR&to=USD', { timeout: 5_000 })
+    const { data } = await axios.get('https://api.frankfurter.dev/v1/latest?from=EUR&to=USD', { timeout: 5_000 })
     const rate = Number(data?.rates?.USD)
     if (!isFinite(rate) || rate <= 0) throw new Error('Invalid FX rate response')
     cachedRate = { value: rate, ts: Date.now() }
