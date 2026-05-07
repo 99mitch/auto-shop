@@ -7,7 +7,8 @@ DB_PATH="/var/www/auto-shop-data/prod.db"
 
 echo "==> Pulling latest code..."
 cd "$APP_DIR"
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
 
 echo "==> Installing root dependencies..."
 npm install --workspaces=false
