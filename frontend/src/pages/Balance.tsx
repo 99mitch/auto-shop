@@ -27,8 +27,15 @@ interface PaymentDetails extends CryptoPaymentInfo {
   status: string
   currency: CryptoCurrency
   amount: number
+  usdAmount?: number
+  exchangeRate?: number | null
   receivedAmount?: number
   txHash?: string | null
+}
+
+function fmtCrypto(n: number, currency: string): string {
+  const decimals = currency === 'SOL' ? 4 : currency === 'ETH' ? 5 : currency === 'BTC' ? 6 : 2
+  return n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 }
 
 function statusLabel(s: string) {
@@ -77,6 +84,18 @@ function QRFlow({ payment, currency, onConfirmed, onClose }: { payment: CryptoPa
       <div style={{ ...MONO, fontSize: 8, letterSpacing: '0.22em', color: 'rgba(251,191,36,0.7)' }}>
         ENVOIE {currencyLabel} À CETTE ADRESSE
       </div>
+      {typeof payment.amount === 'number' && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <div style={{ ...BEBAS, fontSize: 30, color: GOLD, letterSpacing: '0.04em', lineHeight: 1 }}>
+            {fmtCrypto(payment.amount, currency)} {currency}
+          </div>
+          {typeof payment.usdAmount === 'number' && (
+            <div style={{ ...MONO, fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em' }}>
+              ≈ ${payment.usdAmount.toFixed(2)}
+            </div>
+          )}
+        </div>
+      )}
       {payment.qrCode && (
         <div style={{ padding: 8, background: '#fff', borderRadius: 12 }}>
           <img src={payment.qrCode} alt="QR" style={{ width: 168, height: 168, display: 'block' }} />
@@ -156,6 +175,10 @@ export default function Balance() {
         walletAddress: data.walletAddress,
         qrCode: data.qrCode ?? '',
         expiresAt: data.expiresAt,
+        currency: data.currency,
+        amount: data.amount,
+        usdAmount: data.usdAmount,
+        exchangeRate: data.exchangeRate ?? null,
       })
       setActiveCurrency(data.currency)
       setError(null)

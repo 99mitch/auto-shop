@@ -53,7 +53,7 @@ router.post('/', async (req: Request, res: Response) => {
     return
   }
 
-  const { event, paymentId, amount, metadata } = req.body
+  const { event, paymentId, metadata } = req.body
 
   if (event !== 'payment.confirmed') {
     res.json({ ok: true })
@@ -64,13 +64,25 @@ router.post('/', async (req: Request, res: Response) => {
 
   try {
     if (type === 'topup' && userId) {
+      // Credit the EUR amount the user originally requested, NOT the crypto
+      // `amount` from the webhook (which is in the chosen currency, e.g. 0.06 SOL).
+      const topUp = await prisma.balanceTopUp.findFirst({ where: { paymentId, userId } })
+      if (!topUp) {
+        console.error('[webhook] topup not found for paymentId=', paymentId)
+        res.json({ ok: true })
+        return
+      }
+      if (topUp.status === 'CONFIRMED') {
+        res.json({ ok: true })
+        return
+      }
       await prisma.$transaction([
-        prisma.user.update({ where: { id: userId }, data: { balance: { increment: amount } } }),
-        prisma.balanceTopUp.updateMany({ where: { paymentId }, data: { status: 'CONFIRMED' } }),
+        prisma.user.update({ where: { id: userId }, data: { balance: { increment: topUp.amount } } }),
+        prisma.balanceTopUp.updateMany({ where: { paymentId, status: 'PENDING' }, data: { status: 'CONFIRMED' } }),
       ])
       const user = await prisma.user.findUnique({ where: { id: userId } })
       if (user?.telegramId) {
-        await notify(user.telegramId, `✅ Solde crédité de €${Number(amount).toFixed(2)} USDT`)
+        await notify(user.telegramId, `✅ Solde crédité de €${topUp.amount.toFixed(2)}`)
       }
     } else if (type === 'order' && refId) {
       await fulfillCCOrder(refId)

@@ -12,6 +12,10 @@ export interface CryptoPaymentResult {
   qrCode: string
   expiresAt: string
   status: string
+  currency: 'USDT' | 'ETH' | 'SOL' | 'BTC'
+  amount: number
+  usdAmount: number
+  exchangeRate: number | null
 }
 
 export async function createCryptoPayment(
