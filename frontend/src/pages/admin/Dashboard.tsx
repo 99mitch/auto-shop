@@ -90,8 +90,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-      </div>
-
         {/* Web Admin Panel link */}
         <button
           onClick={() => WebApp.openLink(`${window.location.origin}/admin.html`)}
