@@ -170,8 +170,8 @@ export default function Balance() {
   const showQR = !!cryptoPayment
 
   return (
-    <div style={{ background: '#050505', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'rgba(5,5,5,0.92)', backdropFilter: 'blur(14px)', borderBottom: '1px solid rgba(251,191,36,0.15)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div style={{ background: '#050505', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flexShrink: 0, background: 'rgba(5,5,5,0.92)', backdropFilter: 'blur(14px)', borderBottom: '1px solid rgba(251,191,36,0.15)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => navigate(-1)} style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid rgba(251,191,36,0.2)', background: 'rgba(251,191,36,0.08)', color: 'rgba(251,191,36,0.9)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>←</button>
         <div>
           <div style={{ ...BEBAS, fontSize: 22, letterSpacing: '0.06em', color: '#fff', lineHeight: 1 }}>MON SOLDE</div>
@@ -179,14 +179,14 @@ export default function Balance() {
         </div>
       </div>
 
-      <div style={{ flex: 1, padding: '16px 16px calc(env(safe-area-inset-bottom, 0px) + 32px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ background: 'radial-gradient(120% 100% at 50% 0%, rgba(251,191,36,0.10) 0%, #111 60%)', borderRadius: 18, border: '1px solid rgba(251,191,36,0.22)', padding: '24px 16px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 0, padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ background: 'radial-gradient(120% 100% at 50% 0%, rgba(251,191,36,0.10) 0%, #111 60%)', borderRadius: 16, border: '1px solid rgba(251,191,36,0.22)', padding: '18px 16px', textAlign: 'center', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg, transparent, rgba(251,191,36,0.5), transparent)' }} />
-          <div style={{ ...MONO, fontSize: 8, letterSpacing: '0.25em', color: 'rgba(255,255,255,0.35)', marginBottom: 10 }}>SOLDE DISPONIBLE</div>
+          <div style={{ ...MONO, fontSize: 8, letterSpacing: '0.25em', color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>SOLDE DISPONIBLE</div>
           {isLoading ? (
-            <div style={{ height: 48, borderRadius: 10, background: 'rgba(255,255,255,0.05)' }} />
+            <div style={{ height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.05)' }} />
           ) : (
-            <div style={{ ...BEBAS, fontSize: 52, color: GOLD, letterSpacing: '0.04em', lineHeight: 1, textShadow: '0 0 30px rgba(251,191,36,0.3)' }}>
+            <div style={{ ...BEBAS, fontSize: 42, color: GOLD, letterSpacing: '0.04em', lineHeight: 1, textShadow: '0 0 30px rgba(251,191,36,0.3)' }}>
               €{(data?.balance ?? 0).toFixed(2)}
             </div>
           )}
@@ -202,7 +202,7 @@ export default function Balance() {
         )}
 
         {!showQR && (
-          <div style={{ background: '#111', borderRadius: 16, border: '1px solid rgba(255,255,255,0.07)', padding: 18 }}>
+          <div style={{ background: '#111', borderRadius: 16, border: '1px solid rgba(255,255,255,0.07)', padding: '14px 14px 16px', flexShrink: 0 }}>
             <div style={{ ...MONO, fontSize: 8, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', marginBottom: 14 }}>RECHARGER PAR CRYPTO</div>
 
             <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
@@ -247,12 +247,12 @@ export default function Balance() {
         )}
 
         {(data?.topUps?.length ?? 0) > 0 && (
-          <div style={{ background: '#111', borderRadius: 16, border: '1px solid rgba(255,255,255,0.07)', padding: 18 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ background: '#111', borderRadius: 16, border: '1px solid rgba(255,255,255,0.07)', padding: '14px 14px 6px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
               <div style={{ ...MONO, fontSize: 8, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)' }}>HISTORIQUE RECHARGES</div>
               <div style={{ ...MONO, fontSize: 8, color: 'rgba(255,255,255,0.2)' }}>{data!.topUps.length}</div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto', flex: 1, minHeight: 0, paddingBottom: 8 }}>
               {data!.topUps.map((t) => {
                 const isPending = t.status === 'PENDING'
                 const isClickable = isPending
@@ -297,7 +297,6 @@ export default function Balance() {
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');
         ::-webkit-scrollbar { display: none; }
         input::placeholder { color: rgba(255,255,255,0.2); }
-        html, body, #root { background: #050505; min-height: 100dvh; }
       `}</style>
     </div>
   )
