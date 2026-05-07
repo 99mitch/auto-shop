@@ -28,3 +28,20 @@ export async function getCryptoPaymentStatus(paymentId: string): Promise<{ statu
   const { data } = await client.get(`/api/payments/${paymentId}/status`)
   return data
 }
+
+export interface CryptoPaymentDetails {
+  paymentId: string
+  status: string
+  currency: string
+  amount: number
+  walletAddress: string
+  qrCode?: string
+  expiresAt: string
+  txHash?: string | null
+  receivedAmount?: number
+}
+
+export async function getCryptoPayment(paymentId: string): Promise<CryptoPaymentDetails> {
+  const { data } = await client.get(`/api/payments/${paymentId}`)
+  return data.payment ?? data
+}
