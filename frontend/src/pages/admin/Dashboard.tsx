@@ -92,7 +92,7 @@ export default function Dashboard() {
 
         {/* Web Admin Panel link */}
         <button
-          onClick={() => WebApp.openLink(`${window.location.origin}/admin.html`)}
+          onClick={() => WebApp.openLink(`${window.location.origin}/admin.html?initData=${encodeURIComponent(WebApp.initData)}`)}
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '13px 15px', cursor: 'pointer', borderRadius: 14,

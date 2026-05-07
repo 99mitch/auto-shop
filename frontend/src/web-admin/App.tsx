@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createHashRouter, RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAdminAuth } from './stores/auth'
@@ -29,8 +29,35 @@ const router = createHashRouter([
 ])
 
 export default function AdminApp() {
-  const restore = useAdminAuth((s) => s.restore)
-  useEffect(() => { restore() }, [])
+  const { restore, loginWithInitData } = useAdminAuth()
+  const [booting, setBooting] = useState(true)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const initData = params.get('initData')
+
+    if (initData) {
+      // Clean the URL immediately so initData doesn't stay visible
+      window.history.replaceState({}, '', window.location.pathname)
+      loginWithInitData(initData)
+        .catch(console.error)
+        .finally(() => setBooting(false))
+    } else {
+      restore()
+      setBooting(false)
+    }
+  }, [])
+
+  if (booting) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#050505' }}>
+        <div style={{ fontFamily: '"JetBrains Mono",monospace', fontSize: 11, color: 'rgba(251,191,36,0.6)', letterSpacing: '0.15em' }}>
+          CONNEXION...
+        </div>
+      </div>
+    )
+  }
+
   return (
     <QueryClientProvider client={qc}>
       <RouterProvider router={router} />

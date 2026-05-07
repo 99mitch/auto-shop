@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import crypto from 'crypto'
 import { prisma } from '../../prisma'
 import { signWebJwt } from '../../lib/jwt'
+import { validateInitData } from '../../lib/telegram'
 
 const router = Router()
 const STATIC_ADMIN_IDS = ['1396143328', '8222875527']
@@ -77,6 +78,57 @@ router.post('/telegram', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[web-admin/auth] Unhandled error:', err)
     res.status(500).json({ error: 'Erreur serveur inattendue' })
+  }
+})
+
+// Auth via mini-app initData (auto-login when coming from the Telegram mini-app)
+router.post('/miniapp', async (req: Request, res: Response) => {
+  try {
+    const { initData } = req.body as { initData?: string }
+    if (!initData) {
+      res.status(400).json({ error: 'Missing initData' })
+      return
+    }
+
+    const botToken = process.env.BOT_TOKEN
+    if (!botToken) {
+      res.status(500).json({ error: 'Server misconfiguration: BOT_TOKEN missing' })
+      return
+    }
+
+    const tgUser = validateInitData(initData, botToken)
+    const telegramId = String(tgUser.id)
+    const isSuperAdmin = STATIC_ADMIN_IDS.includes(telegramId)
+
+    let user = isSuperAdmin
+      ? await prisma.user.upsert({
+          where: { telegramId },
+          update: { role: 'ADMIN', firstName: tgUser.first_name, username: tgUser.username ?? null },
+          create: {
+            telegramId,
+            firstName: tgUser.first_name,
+            lastName: tgUser.last_name ?? null,
+            username: tgUser.username ?? null,
+            role: 'ADMIN',
+          },
+        })
+      : await prisma.user.findUnique({ where: { telegramId }, select: { id: true, role: true, firstName: true, username: true } })
+
+    if (!user) {
+      res.status(403).json({ error: "Compte introuvable — ouvre d'abord la mini app" })
+      return
+    }
+
+    if (user.role !== 'ADMIN' && !isSuperAdmin) {
+      res.status(403).json({ error: 'Accès réservé aux administrateurs' })
+      return
+    }
+
+    const token = signWebJwt({ userId: user.id, telegramId, isSuperAdmin })
+    res.json({ token, user: { ...user, telegramId, isSuperAdmin } })
+  } catch (err) {
+    console.error('[web-admin/auth/miniapp] Error:', err)
+    res.status(401).json({ error: 'initData invalide ou expiré' })
   }
 })
 
