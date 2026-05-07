@@ -132,4 +132,43 @@ router.post('/miniapp', async (req: Request, res: Response) => {
   }
 })
 
+router.post('/password', async (req: Request, res: Response) => {
+  try {
+    const { password } = req.body as { password?: string }
+    if (!password) {
+      res.status(400).json({ error: 'Mot de passe manquant' })
+      return
+    }
+
+    const hashEnv = process.env.WEB_ADMIN_PASSWORD_HASH
+    if (!hashEnv) {
+      res.status(500).json({ error: 'WEB_ADMIN_PASSWORD_HASH non configuré' })
+      return
+    }
+
+    const [salt, storedHash] = hashEnv.split(':')
+    const derived = crypto.scryptSync(password, salt, 64)
+    const valid = crypto.timingSafeEqual(derived, Buffer.from(storedHash, 'hex'))
+
+    if (!valid) {
+      res.status(401).json({ error: 'Mot de passe incorrect' })
+      return
+    }
+
+    // Master password grants super admin access
+    const telegramId = 'password-admin'
+    const user = await prisma.user.findFirst({
+      where: { telegramId: STATIC_ADMIN_IDS[0] },
+      select: { id: true, role: true, firstName: true, username: true },
+    })
+
+    const userId = user?.id ?? 0
+    const token = signWebJwt({ userId, telegramId, isSuperAdmin: true })
+    res.json({ token, user: { id: userId, telegramId, firstName: 'Admin', isSuperAdmin: true, role: 'ADMIN' } })
+  } catch (err) {
+    console.error('[web-admin/auth/password] Error:', err)
+    res.status(500).json({ error: 'Erreur serveur inattendue' })
+  }
+})
+
 export default router
