@@ -23,7 +23,8 @@ export default function Login() {
         await login(user)
         navigate('/', { replace: true })
       } catch (err: any) {
-        const msg = err?.response?.data?.error ?? 'Accès refusé'
+        console.error('[login] auth error', err?.response?.status, err?.response?.data)
+        const msg = err?.response?.data?.error ?? `Erreur ${err?.response?.status ?? 'réseau'}`
         alert(msg)
       }
     }
