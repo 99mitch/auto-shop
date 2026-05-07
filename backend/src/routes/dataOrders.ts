@@ -5,6 +5,7 @@ import { prisma } from '../prisma'
 import { bot } from '../bot'
 import { notify } from '../lib/notify'
 import { createCryptoPayment } from '../lib/cryptoApi'
+import { eurToUsd } from '../lib/fx'
 import {
   generateBrut,
   generateSpecialTxt,
@@ -138,9 +139,11 @@ router.post('/extract', async (req: AuthRequest, res) => {
     if (paymentMethod === 'CRYPTO') {
       // Créer le paiement crypto — les fichiers sont déjà en DB, livraison par webhook
       try {
+        const eurAmount = records.length * 0.1
+        const { usd } = await eurToUsd(eurAmount)
         const payment = await createCryptoPayment(
-          records.length * 0.1,
-          `Extraction ${typeUp} #${order.id}`,
+          usd,
+          `Extraction ${typeUp} #${order.id} (€${eurAmount.toFixed(2)})`,
           { type: 'data-order', refId: order.id, userId: req.userId! },
           dataCurrency
         )

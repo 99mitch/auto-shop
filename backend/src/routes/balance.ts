@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { prisma } from '../prisma'
 import { createCryptoPayment, getCryptoPayment, getCryptoPaymentStatus } from '../lib/cryptoApi'
+import { eurToUsd } from '../lib/fx'
 
 const router = Router()
 router.use(authMiddleware)
@@ -32,7 +33,8 @@ router.post('/topup', async (req: AuthRequest, res) => {
     : 'USDT'
 
   try {
-    const payment = await createCryptoPayment(amount, `Recharge solde utilisateur #${req.userId}`, {
+    const { usd } = await eurToUsd(amount)
+    const payment = await createCryptoPayment(usd, `Recharge solde utilisateur #${req.userId} (€${amount.toFixed(2)})`, {
       type: 'topup',
       userId: req.userId!,
     }, currency)
