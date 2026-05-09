@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAdminAuth } from '../stores/auth'
 
@@ -6,9 +6,12 @@ const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME as string
 
 export default function Login() {
-  const { login, token } = useAdminAuth()
+  const { login, loginWithPassword, token } = useAdminAuth()
   const navigate = useNavigate()
   const widgetRef = useRef<HTMLDivElement>(null)
+  const [pwd, setPwd] = useState('')
+  const [pwdError, setPwdError] = useState('')
+  const [pwdLoading, setPwdLoading] = useState(false)
 
   useEffect(() => {
     if (token) { navigate('/', { replace: true }); return }
@@ -41,6 +44,20 @@ export default function Login() {
     return () => { delete (window as any).onTelegramAuth }
   }, [])
 
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPwdError('')
+    setPwdLoading(true)
+    try {
+      await loginWithPassword(pwd)
+      navigate('/', { replace: true })
+    } catch (err: any) {
+      setPwdError(err?.response?.data?.error ?? 'Erreur réseau')
+    } finally {
+      setPwdLoading(false)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#050505', gap: 32 }}>
       <style>{FONTS}</style>
@@ -61,6 +78,40 @@ export default function Login() {
         <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono",monospace', textAlign: 'center' }}>
           Seuls les administrateurs enregistrés ont accès
         </div>
+
+        <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.07)', margin: '4px 0' }} />
+
+        <form onSubmit={handlePasswordLogin} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.15em', fontFamily: '"JetBrains Mono",monospace', textAlign: 'center' }}>
+            OU PAR MOT DE PASSE
+          </div>
+          <input
+            type="password"
+            value={pwd}
+            onChange={e => setPwd(e.target.value)}
+            placeholder="Mot de passe"
+            autoComplete="current-password"
+            style={{
+              background: '#0a0a0a', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 8,
+              color: '#fff', fontFamily: '"JetBrains Mono",monospace', fontSize: 13,
+              padding: '10px 14px', outline: 'none', width: '100%', boxSizing: 'border-box',
+            }}
+          />
+          {pwdError && <div style={{ fontSize: 11, color: '#f87171', fontFamily: '"JetBrains Mono",monospace', textAlign: 'center' }}>{pwdError}</div>}
+          <button
+            type="submit"
+            disabled={pwdLoading || !pwd}
+            style={{
+              background: pwdLoading || !pwd ? 'rgba(251,191,36,0.2)' : '#fbbf24',
+              color: '#000', border: 'none', borderRadius: 8, padding: '10px 0',
+              fontFamily: '"JetBrains Mono",monospace', fontWeight: 700, fontSize: 12,
+              letterSpacing: '0.1em', cursor: pwdLoading || !pwd ? 'not-allowed' : 'pointer',
+              transition: 'background 0.2s',
+            }}
+          >
+            {pwdLoading ? '...' : 'CONNEXION'}
+          </button>
+        </form>
       </div>
     </div>
   )

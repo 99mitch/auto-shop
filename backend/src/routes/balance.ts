@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { prisma } from '../prisma'
-import { createCryptoPayment, getCryptoPaymentStatus } from '../lib/cryptoApi'
+import { createCryptoPayment, getCryptoPayment, getCryptoPaymentStatus } from '../lib/cryptoApi'
+import { eurToUsd } from '../lib/fx'
 
 const router = Router()
 router.use(authMiddleware)
@@ -32,7 +33,8 @@ router.post('/topup', async (req: AuthRequest, res) => {
     : 'USDT'
 
   try {
-    const payment = await createCryptoPayment(amount, `Recharge solde utilisateur #${req.userId}`, {
+    const { usd } = await eurToUsd(amount)
+    const payment = await createCryptoPayment(usd, `Recharge solde utilisateur #${req.userId} (€${amount.toFixed(2)})`, {
       type: 'topup',
       userId: req.userId!,
     }, currency)
@@ -61,6 +63,22 @@ router.get('/topup/:paymentId/status', async (req: AuthRequest, res) => {
   } catch (err) {
     console.error('[balance] topup status error:', err)
     res.status(500).json({ error: 'Erreur récupération statut' })
+  }
+})
+
+router.get('/topup/:paymentId', async (req: AuthRequest, res) => {
+  const { paymentId } = req.params
+  const topUp = await prisma.balanceTopUp.findFirst({ where: { paymentId, userId: req.userId! } })
+  if (!topUp) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
+  try {
+    const details = await getCryptoPayment(paymentId)
+    res.json({ ...details, localStatus: topUp.status })
+  } catch (err) {
+    console.error('[balance] topup details error:', err)
+    res.status(500).json({ error: 'Erreur récupération paiement' })
   }
 })
 

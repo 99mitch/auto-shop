@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { prisma } from '../prisma'
 import { CreatePreOrderSchema } from 'floramini-types'
 import { createCryptoPayment } from '../lib/cryptoApi'
+import { eurToUsd } from '../lib/fx'
 import { getAdminIds } from '../middleware/admin'
 import { notify } from '../lib/notify'
 
@@ -72,7 +73,8 @@ router.post('/', async (req: AuthRequest, res) => {
     const preorder = await prisma.preOrder.create({
       data: { userId: req.userId!, paymentMethod, quantity, pricePerCard, total, ...filters },
     })
-    const payment = await createCryptoPayment(total, `Précommande CC #${preorder.id}`, {
+    const { usd } = await eurToUsd(total)
+    const payment = await createCryptoPayment(usd, `Précommande CC #${preorder.id} (€${total.toFixed(2)})`, {
       type: 'preorder',
       refId: preorder.id,
       userId: req.userId!,

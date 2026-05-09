@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const client = axios.create({
-  baseURL: process.env.CRYPTO_API_URL || 'http://deploy-crypto-api-1:3000',
+  baseURL: process.env.CRYPTO_API_URL || 'http://127.0.0.1:3002',
   headers: { 'X-Admin-Key': process.env.CRYPTO_API_ADMIN_KEY || '' },
   timeout: 10_000,
 })
@@ -12,6 +12,10 @@ export interface CryptoPaymentResult {
   qrCode: string
   expiresAt: string
   status: string
+  currency: 'USDT' | 'ETH' | 'SOL' | 'BTC'
+  amount: number
+  usdAmount: number
+  exchangeRate: number | null
 }
 
 export async function createCryptoPayment(
@@ -27,4 +31,21 @@ export async function createCryptoPayment(
 export async function getCryptoPaymentStatus(paymentId: string): Promise<{ status: string; receivedAmount: number; expiresAt: string }> {
   const { data } = await client.get(`/api/payments/${paymentId}/status`)
   return data
+}
+
+export interface CryptoPaymentDetails {
+  paymentId: string
+  status: string
+  currency: string
+  amount: number
+  walletAddress: string
+  qrCode?: string
+  expiresAt: string
+  txHash?: string | null
+  receivedAmount?: number
+}
+
+export async function getCryptoPayment(paymentId: string): Promise<CryptoPaymentDetails> {
+  const { data } = await client.get(`/api/payments/${paymentId}`)
+  return data.payment ?? data
 }

@@ -7,7 +7,8 @@ DB_PATH="/var/www/auto-shop-data/prod.db"
 
 echo "==> Pulling latest code..."
 cd "$APP_DIR"
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
 
 echo "==> Installing root dependencies..."
 npm install --workspaces=false
@@ -31,7 +32,7 @@ echo "==> Importing donnees CSV files (idempotent)..."
 DONNEES_DIR="/var/www/auto-shop-data/donnees" DATABASE_URL="file:$DB_PATH" node dist/src/scripts/import-donnees.js || true
 
 echo "==> Restarting backend with PM2..."
-pm2 restart auto-shop-backend || pm2 start "$BACKEND_DIR/dist/src/index.js" \
+pm2 restart auto-shop-backend --update-env || pm2 start "$BACKEND_DIR/dist/src/index.js" \
   --name auto-shop-backend \
   --cwd "$BACKEND_DIR"
 

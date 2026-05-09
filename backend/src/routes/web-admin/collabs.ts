@@ -63,10 +63,9 @@ router.get('/:id', async (req, res) => {
           price: true,
           stock: true,
           isActive: true,
-          createdAt: true,
           _count: { select: { orderItems: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { id: 'desc' },
       },
       earnings: {
         select: { amount: true, platformFee: true, createdAt: true },

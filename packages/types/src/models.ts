@@ -182,4 +182,8 @@ export interface CryptoPaymentInfo {
   walletAddress: string
   qrCode: string
   expiresAt: string
+  currency?: CryptoCurrency
+  amount?: number
+  usdAmount?: number
+  exchangeRate?: number | null
 }

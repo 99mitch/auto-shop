@@ -16,6 +16,7 @@ interface AuthState {
   isSuperAdmin: boolean
   login: (telegramData: Record<string, string>) => Promise<void>
   loginWithInitData: (initData: string) => Promise<void>
+  loginWithPassword: (password: string) => Promise<void>
   logout: () => void
   restore: () => void
 }
@@ -45,6 +46,13 @@ export const useAdminAuth = create<AuthState>((set) => ({
   },
   loginWithInitData: async (initData) => {
     const res = await axios.post(`${BASE}/api/web-admin/auth/miniapp`, { initData })
+    const { token, user } = res.data
+    localStorage.setItem('admin_token', token)
+    localStorage.setItem('admin_user', JSON.stringify(user))
+    set({ token, user, isSuperAdmin: user.isSuperAdmin })
+  },
+  loginWithPassword: async (password) => {
+    const res = await axios.post(`${BASE}/api/web-admin/auth/password`, { password })
     const { token, user } = res.data
     localStorage.setItem('admin_token', token)
     localStorage.setItem('admin_user', JSON.stringify(user))
