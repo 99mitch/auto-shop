@@ -59,7 +59,7 @@ export default function AdminCollaborators() {
       setTimeout(() => setAddFeedback(null), 3000)
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.message ?? 'Erreur lors de l\'ajout.'
+      const msg = err?.response?.data?.error ?? err?.response?.data?.message ?? 'Erreur lors de l\'ajout.'
       setAddFeedback({ ok: false, msg })
     },
   })

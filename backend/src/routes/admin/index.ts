@@ -17,7 +17,7 @@ router.get('/me', (req: AuthRequest, res) => {
   res.json({
     telegramId: req.telegramId,
     userId: req.userId,
-    isAdmin: getAdminIds().includes(req.telegramId!),
+    isAdmin: true, // adminMiddleware already verified access
   })
 })
 
