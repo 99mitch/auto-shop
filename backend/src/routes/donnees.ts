@@ -76,10 +76,10 @@ router.post('/count', async (req, res) => {
     gender?: string
   }
 
-  if (!Array.isArray(fileIds) || fileIds.length === 0) return res.json({ count: 0 })
+  if (!Array.isArray(fileIds) || fileIds.length === 0) return res.json({ count: 0, byFile: {} })
 
   const typeUp = (type ?? '').toUpperCase()
-  if (!['FICHE', 'NUMLIST', 'MAILLIST'].includes(typeUp)) return res.json({ count: 0 })
+  if (!['FICHE', 'NUMLIST', 'MAILLIST'].includes(typeUp)) return res.json({ count: 0, byFile: {} })
 
   try {
     const categoryFilter = typeUp === 'FICHE'
@@ -88,17 +88,24 @@ router.post('/count', async (req, res) => {
       ? { inNumlist: true,  extractedAsNumlist: false }
       : { inMaillist: true, extractedAsMaillist: false }
 
-    const count = await prisma.dataRecord.count({
-      where: {
-        fileId: { in: fileIds },
-        ...categoryFilter,
-        ...(dobFrom || dobTo ? { dateNaissance: { ...(dobFrom ? { gte: dobFrom } : {}), ...(dobTo ? { lte: dobTo } : {}) } } : {}),
-        ...(departments && departments.length > 0 ? { department: { in: departments } } : {}),
-        ...(banks && banks.length > 0 ? { bank: { in: banks } } : {}),
-        ...(gender && gender !== 'ALL' ? { gender } : {}),
-      },
-    })
-    res.json({ count })
+    const filterWhere = {
+      ...categoryFilter,
+      ...(dobFrom || dobTo ? { dateNaissance: { ...(dobFrom ? { gte: dobFrom } : {}), ...(dobTo ? { lte: dobTo } : {}) } } : {}),
+      ...(departments && departments.length > 0 ? { department: { in: departments } } : {}),
+      ...(banks && banks.length > 0 ? { bank: { in: banks } } : {}),
+      ...(gender && gender !== 'ALL' ? { gender } : {}),
+    }
+
+    const [count, perFile] = await Promise.all([
+      prisma.dataRecord.count({ where: { fileId: { in: fileIds }, ...filterWhere } }),
+      Promise.all(
+        fileIds.map((id) =>
+          prisma.dataRecord.count({ where: { fileId: id, ...filterWhere } }).then((c) => [id, c] as [number, number])
+        )
+      ),
+    ])
+
+    res.json({ count, byFile: Object.fromEntries(perFile) })
   } catch {
     res.status(500).json({ error: 'Server error' })
   }

@@ -148,15 +148,15 @@ interface DataFile {
 
 // ─── Banks ────────────────────────────────────────────────────────────────────
 
-const BANKS_PHYSIQUE = [
-  'BNP PARIBAS','CREDIT AGRICOLE','SOCIETE GENERALE','LCL','CIC','CREDIT MUTUEL',
-  'LA BANQUE POSTALE','CAISSE EPARGNE','BANQUE POPULAIRE','BRED','HSBC FRANCE',
-  'CREDIT DU NORD','PALATINE','AXA BANQUE','CETELEM','COFIDIS','SOFINCO','FRANFINANCE',
-]
-const BANKS_EN_LIGNE = [
-  'BOURSORAMA','HELLO BANK','FORTUNEO','ING','MONABANQ','ORANGE BANK','MA FRENCH BANK',
-  'FLOA BANK','REVOLUT','N26','NICKEL','QONTO','LYDIA','SUMERIA','SHINE','BUNQ',
-  'WISE','PIXPAY','KARD','GREEN GOT','ANYTIME','VYBE','PAYSERA','MONESE',
+const ALL_BANKS = [
+  'ANYTIME','AXA BANQUE','BANQUE ACCORD','BANQUE CASINO','BANQUE POPULAIRE',
+  'BARCLAYS','BFORBANK','BNP PARIBAS','BPE','BRED','BOURSORAMA','BUNQ',
+  'CAISSE EPARGNE','CARREFOUR BANQUE','CETELEM','CIC','COFIDIS','CREDIT AGRICOLE',
+  'CREDIT DU NORD','CREDIT MUTUEL','FLOA BANK','FORTUNEO','FRANFINANCE',
+  'GREEN GOT','HELLO BANK','HSBC FRANCE','ING','KARD','LA BANQUE POSTALE','LCL',
+  'LYDIA','MA FRENCH BANK','MEMO BANK','MILLEIS BANQUE','MONABANQ','MONESE',
+  'N26','NICKEL','ORANGE BANK','PALATINE','PAYSERA','PIXPAY','QONTO','RENAULT BANK',
+  'REVOLUT','SHINE','SOCIETE GENERALE','SOFINCO','SUMERIA','SWAN','VYBE','WISE',
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -211,44 +211,116 @@ function YearRange({ from, to, onFrom, onTo, warn }: { from: string; to: string;
   )
 }
 
-function BankPicker({ selected, onToggle, accent, warn }: { selected: Set<string>; onToggle: (b: string) => void; accent: string; warn?: boolean }) {
-  const [cat, setCat] = useState<'PHYSIQUE' | 'EN_LIGNE'>('PHYSIQUE')
-  const banks = cat === 'PHYSIQUE' ? BANKS_PHYSIQUE : BANKS_EN_LIGNE
+function BankSheet({ selected, onToggle, onClose, accent }: { selected: Set<string>; onToggle: (b: string) => void; onClose: () => void; accent: string }) {
+  const [search, setSearch] = useState('')
+  const filtered = search.trim()
+    ? ALL_BANKS.filter((b) => b.toLowerCase().includes(search.toLowerCase()))
+    : ALL_BANKS
 
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.75)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: '#0a0a0a', borderRadius: '20px 20px 0 0', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.15)' }} />
+        </div>
+
+        <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 18, color: '#fff', letterSpacing: '0.06em' }}>SÉLECTION BANQUE</div>
+            <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>
+              {selected.size === 0 ? 'Toutes les banques' : `${selected.size} banque${selected.size > 1 ? 's' : ''} sélectionnée${selected.size > 1 ? 's' : ''}`}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </div>
+
+        <div style={{ padding: '10px 14px 6px', flexShrink: 0 }}>
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'rgba(255,255,255,0.2)', pointerEvents: 'none' }}>🔍</span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher une banque…"
+              style={{ ...INPUT_STYLE, paddingLeft: 30 }}
+              autoFocus
+            />
+            {search && (
+              <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: 12, padding: 0, lineHeight: 1 }}>✕</button>
+            )}
+          </div>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '6px 14px 14px', display: 'flex', flexWrap: 'wrap', gap: 6, alignContent: 'flex-start' }}>
+          {filtered.length === 0
+            ? <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 9, color: 'rgba(255,255,255,0.2)', padding: '10px 0', width: '100%', textAlign: 'center' }}>Aucun résultat</div>
+            : filtered.map((bank) => {
+              const active = selected.has(bank)
+              return (
+                <button key={bank} onClick={() => onToggle(bank)} style={{
+                  background: active ? `color-mix(in srgb, ${accent} 20%, transparent)` : 'rgba(255,255,255,0.04)',
+                  border: active ? `1px solid ${accent}80` : '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 8, padding: '6px 11px', cursor: 'pointer',
+                  fontFamily: '"JetBrains Mono", monospace', fontSize: 9, fontWeight: 700,
+                  color: active ? accent : 'rgba(255,255,255,0.45)',
+                  letterSpacing: '0.06em', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                  display: 'flex', alignItems: 'center', gap: active ? 6 : 0,
+                }}>
+                  {active && <span style={{ fontSize: 8, opacity: 0.7 }}>✓</span>}
+                  {bank}
+                </button>
+              )
+            })
+          }
+        </div>
+
+        <div style={{ padding: '0 14px 28px', flexShrink: 0, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
+          <button onClick={onClose} style={{
+            width: '100%', height: 46, borderRadius: 12, cursor: 'pointer',
+            border: `1px solid ${selected.size > 0 ? accent : 'rgba(255,255,255,0.15)'}`,
+            background: selected.size > 0 ? `color-mix(in srgb, ${accent} 15%, transparent)` : 'rgba(255,255,255,0.04)',
+            color: selected.size > 0 ? accent : 'rgba(255,255,255,0.5)',
+            fontFamily: '"Bebas Neue", sans-serif', fontSize: 17, letterSpacing: '0.1em', transition: 'all 0.2s',
+          }}>
+            {selected.size === 0 ? 'FERMER' : `CONFIRMER  •  ${selected.size} BANQUE${selected.size > 1 ? 'S' : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BankButton({ selected, onOpen, onRemove, accent, warn }: { selected: Set<string>; onOpen: () => void; onRemove: (b: string) => void; accent: string; warn?: boolean }) {
   return (
     <div>
       <FilterLabel>Banque {selected.size > 0 && <span style={{ color: accent, opacity: 0.8 }}>({selected.size} sélect.)</span>}</FilterLabel>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-        {(['PHYSIQUE', 'EN_LIGNE'] as const).map((c) => {
-          const active = cat === c
-          const lbl = c === 'PHYSIQUE' ? 'BANQUE PHYSIQUE' : 'EN LIGNE / NEO'
-          return (
-            <button key={c} onClick={() => setCat(c)} style={{
-              flex: 1, height: 30, borderRadius: 7, cursor: 'pointer',
-              border: active ? `1px solid ${accent}80` : '1px solid rgba(255,255,255,0.1)',
-              background: active ? `color-mix(in srgb, ${accent} 12%, transparent)` : 'rgba(255,255,255,0.03)',
-              color: active ? accent : 'rgba(255,255,255,0.35)',
+      <button onClick={onOpen} style={{
+        width: '100%', height: 38, borderRadius: 9, cursor: 'pointer',
+        border: selected.size > 0 ? `1px solid ${accent}60` : '1px solid rgba(255,255,255,0.1)',
+        background: selected.size > 0 ? `color-mix(in srgb, ${accent} 10%, transparent)` : 'rgba(255,255,255,0.03)',
+        color: selected.size > 0 ? accent : 'rgba(255,255,255,0.35)',
+        fontFamily: '"JetBrains Mono", monospace', fontSize: 9, fontWeight: 700,
+        letterSpacing: '0.1em', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 12px', transition: 'all 0.15s',
+      }}>
+        <span>{selected.size === 0 ? 'TOUTES LES BANQUES' : `${selected.size} BANQUE${selected.size > 1 ? 'S' : ''} SÉLECT.`}</span>
+        <span style={{ opacity: 0.4, fontSize: 10 }}>▼</span>
+      </button>
+      {selected.size > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 7 }}>
+          {Array.from(selected).map((b) => (
+            <button key={b} onClick={() => onRemove(b)} style={{
+              background: `color-mix(in srgb, ${accent} 15%, transparent)`,
+              border: `1px solid ${accent}50`,
+              borderRadius: 6, padding: '4px 8px', cursor: 'pointer',
               fontFamily: '"JetBrains Mono", monospace', fontSize: 8, fontWeight: 700,
-              letterSpacing: '0.1em', transition: 'all 0.15s',
-            }}>{lbl}</button>
-          )
-        })}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {banks.map((bank) => {
-          const active = selected.has(bank)
-          return (
-            <button key={bank} onClick={() => onToggle(bank)} style={{
-              background: active ? `color-mix(in srgb, ${accent} 18%, transparent)` : 'rgba(255,255,255,0.04)',
-              border: active ? `1px solid ${accent}70` : '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 7, padding: '5px 10px', cursor: 'pointer',
-              fontFamily: '"JetBrains Mono", monospace', fontSize: 9, fontWeight: 700,
-              color: active ? accent : 'rgba(255,255,255,0.45)',
-              letterSpacing: '0.06em', transition: 'all 0.15s', whiteSpace: 'nowrap',
-            }}>{bank}</button>
-          )
-        })}
-      </div>
+              color: accent, letterSpacing: '0.05em', whiteSpace: 'nowrap',
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              {b} <span style={{ opacity: 0.5 }}>✕</span>
+            </button>
+          ))}
+        </div>
+      )}
       {warn && <WarnBadge text="Certains fichiers sélectionnés n'ont pas de données bancaires" />}
     </div>
   )
@@ -279,7 +351,9 @@ function GenderToggle({ value, onChange, accent, warn }: { value: Gender; onChan
   )
 }
 
-function FileCard({ file, selected, onToggle, accent }: { file: DataFile; selected: boolean; onToggle: () => void; accent: string }) {
+function FileCard({ file, selected, onToggle, accent, filteredCount, hasFilters }: { file: DataFile; selected: boolean; onToggle: () => void; accent: string; filteredCount?: number; hasFilters: boolean }) {
+  const showFiltered = selected && hasFilters && filteredCount !== undefined
+
   return (
     <button onClick={onToggle} style={{
       background: selected ? `color-mix(in srgb, ${accent} 8%, #111)` : '#111',
@@ -298,8 +372,18 @@ function FileCard({ file, selected, onToggle, accent }: { file: DataFile; select
           {selected && <svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3L3 5L7 1" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 18, color: selected ? accent : 'rgba(255,255,255,0.4)', lineHeight: 1, letterSpacing: '0.04em' }}>{fmt(file.available)}</div>
-          <div style={{ fontSize: 7, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em' }}>DISPO</div>
+          {showFiltered ? (
+            <>
+              <div style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 18, color: accent, lineHeight: 1, letterSpacing: '0.04em' }}>{fmt(filteredCount!)}</div>
+              <div style={{ fontSize: 7, fontFamily: '"JetBrains Mono", monospace', color: accent, opacity: 0.5, letterSpacing: '0.1em' }}>FILTRÉS</div>
+              <div style={{ fontSize: 7, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.15)', letterSpacing: '0.08em', marginTop: 2 }}>{fmt(file.available)} dispo</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 18, color: selected ? accent : 'rgba(255,255,255,0.4)', lineHeight: 1, letterSpacing: '0.04em' }}>{fmt(file.available)}</div>
+              <div style={{ fontSize: 7, fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em' }}>DISPO</div>
+            </>
+          )}
         </div>
       </div>
       <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 9, fontWeight: 700, color: selected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.45)', letterSpacing: '0.04em', lineHeight: 1.4, wordBreak: 'break-all' }}>
@@ -327,6 +411,7 @@ export default function ExtractionPage() {
   const [gender,        setGender]        = useState<Gender>('ALL')
   const [withNames,     setWithNames]     = useState(false)
   const [showFmtSheet,  setShowFmtSheet]  = useState(false)
+  const [showBankSheet, setShowBankSheet] = useState(false)
   const [debouncedQ,    setDebouncedQ]    = useState({ fileIds: [] as number[], type: apiType, dobFrom: '', dobTo: '', departments: [] as string[], banks: [] as string[], gender: 'ALL' as Gender })
 
   const toggleBank = useCallback((bank: string) => {
@@ -354,7 +439,7 @@ export default function ExtractionPage() {
     staleTime: 30_000, retry: false,
   })
 
-  const { data: countData, isFetching: countFetching } = useQuery<{ count: number }>({
+  const { data: countData, isFetching: countFetching } = useQuery<{ count: number; byFile: Record<number, number> }>({
     queryKey: ['donnees-count', debouncedQ],
     queryFn: () => api.post('/api/donnees/count', debouncedQ).then((r) => r.data),
     enabled: debouncedQ.fileIds.length > 0,
@@ -362,6 +447,7 @@ export default function ExtractionPage() {
   })
 
   const count = debouncedQ.fileIds.length === 0 ? 0 : (countData?.count ?? 0)
+  const byFile = countData?.byFile ?? {}
 
   // Detect which columns are available in selected files
   const selectedFiles = useMemo(() => files.filter((f) => selectedIds.has(f.id)), [files, selectedIds])
@@ -441,7 +527,7 @@ export default function ExtractionPage() {
             <input value={deptRaw} onChange={(e) => setDeptRaw(e.target.value)} placeholder="75, 69, 13… (séparer par virgule)" style={INPUT_STYLE} />
           </div>
 
-          <BankPicker selected={selectedBanks} onToggle={toggleBank} accent={accent} warn={anyMissingBank && selectedBanks.size > 0} />
+          <BankButton selected={selectedBanks} onOpen={() => setShowBankSheet(true)} onRemove={toggleBank} accent={accent} warn={anyMissingBank && selectedBanks.size > 0} />
 
           <GenderToggle value={gender} onChange={setGender} accent={accent} warn={anyMissingGender && gender !== 'ALL'} />
         </div>
@@ -503,7 +589,7 @@ export default function ExtractionPage() {
           ) : (
             <div style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {files.map((file) => (
-                <FileCard key={file.id} file={file} selected={selectedIds.has(file.id)} onToggle={() => toggleFile(file.id)} accent={accent} />
+                <FileCard key={file.id} file={file} selected={selectedIds.has(file.id)} onToggle={() => toggleFile(file.id)} accent={accent} filteredCount={byFile[file.id]} hasFilters={hasFilters} />
               ))}
             </div>
           )}
@@ -539,6 +625,11 @@ export default function ExtractionPage() {
             : `EXTRAIRE  ${fmt(count)}  LIGNE${count > 1 ? 'S' : ''}`}
         </button>
       </div>
+
+      {/* Bank Sheet */}
+      {showBankSheet && (
+        <BankSheet selected={selectedBanks} onToggle={toggleBank} onClose={() => setShowBankSheet(false)} accent={accent} />
+      )}
 
       {/* Format Sheet */}
       {showFmtSheet && (
