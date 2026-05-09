@@ -136,35 +136,47 @@ router.post('/password', async (req: Request, res: Response) => {
   try {
     const { password } = req.body as { password?: string }
     if (!password) {
-      res.status(400).json({ error: 'Mot de passe manquant' })
+      res.status(400).json({ error: 'Mot de passe requis' })
       return
     }
 
-    const hashEnv = process.env.WEB_ADMIN_PASSWORD_HASH
-    if (!hashEnv) {
-      res.status(500).json({ error: 'WEB_ADMIN_PASSWORD_HASH non configuré' })
+    const adminPassword = process.env.ADMIN_PASSWORD
+    if (!adminPassword) {
+      res.status(503).json({ error: 'Auth par mot de passe non configurée (ADMIN_PASSWORD manquant)' })
       return
     }
 
-    const [salt, storedHash] = hashEnv.split(':')
-    const derived = crypto.scryptSync(password, salt, 64)
-    const valid = crypto.timingSafeEqual(derived, Buffer.from(storedHash, 'hex'))
-
+    const aBuf = Buffer.from(password)
+    const bBuf = Buffer.from(adminPassword)
+    const valid = aBuf.length === bBuf.length && crypto.timingSafeEqual(aBuf, bBuf)
     if (!valid) {
       res.status(401).json({ error: 'Mot de passe incorrect' })
       return
     }
 
-    // Master password grants super admin access
-    const telegramId = 'password-admin'
-    const user = await prisma.user.findFirst({
-      where: { telegramId: STATIC_ADMIN_IDS[0] },
-      select: { id: true, role: true, firstName: true, username: true },
-    })
+    // Trouver le premier super admin réel en base (pour que le middleware webAdminAuth l'accepte)
+    let adminUser: { id: number; telegramId: string; firstName: string; username: string | null; role: string } | null = null
+    for (const id of STATIC_ADMIN_IDS) {
+      adminUser = await prisma.user.findUnique({
+        where: { telegramId: id },
+        select: { id: true, telegramId: true, role: true, firstName: true, username: true },
+      })
+      if (adminUser) break
+    }
+    if (!adminUser) {
+      adminUser = await prisma.user.findFirst({
+        where: { role: 'ADMIN' },
+        select: { id: true, telegramId: true, role: true, firstName: true, username: true },
+      })
+    }
+    if (!adminUser) {
+      res.status(404).json({ error: "Aucun compte admin trouvé — ouvre d'abord la mini app" })
+      return
+    }
 
-    const userId = user?.id ?? 0
-    const token = signWebJwt({ userId, telegramId, isSuperAdmin: true })
-    res.json({ token, user: { id: userId, telegramId, firstName: 'Admin', isSuperAdmin: true, role: 'ADMIN' } })
+    const isSuperAdmin = STATIC_ADMIN_IDS.includes(adminUser.telegramId)
+    const token = signWebJwt({ userId: adminUser.id, telegramId: adminUser.telegramId, isSuperAdmin })
+    res.json({ token, user: { ...adminUser, isSuperAdmin } })
   } catch (err) {
     console.error('[web-admin/auth/password] Error:', err)
     res.status(500).json({ error: 'Erreur serveur inattendue' })
