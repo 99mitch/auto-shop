@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import Splash from './pages/Splash'
 import WebApp from '@twa-dev/sdk'
 import { useAuthStore } from './stores/auth'
 import Layout from './components/Layout'
@@ -78,12 +79,22 @@ const router = createBrowserRouter([
 
 function AppInit() {
   const init = useAuthStore((s) => s.init)
+  const [splash, setSplash] = useState(() => !sessionStorage.getItem('splashSeen'))
 
   useEffect(() => {
     WebApp.ready()
     WebApp.expand()
     init()
   }, [])
+
+  if (splash) {
+    return (
+      <Splash onDone={() => {
+        sessionStorage.setItem('splashSeen', '1')
+        setSplash(false)
+      }} />
+    )
+  }
 
   return <RouterProvider router={router} />
 }
