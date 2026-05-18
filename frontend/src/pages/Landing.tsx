@@ -174,9 +174,6 @@ export default function Landing() {
             }}>
               Vente de Cartes
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.4 }}>
-              CC, debit, prepaid &amp; full dumps
-            </div>
             <div style={{
               marginTop: 14,
               display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -245,9 +242,6 @@ export default function Landing() {
               marginBottom: 6,
             }}>
               Données Digitales
-            </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.4 }}>
-              Fullz, logs, comptes &amp; identités
             </div>
             <div style={{
               marginTop: 14,
