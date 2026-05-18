@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import WebApp from '@twa-dev/sdk'
@@ -6,6 +6,22 @@ import { api } from '../lib/api'
 import type { Favorite } from 'floramini-types'
 import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 import { useAuthStore } from '../stores/auth'
+
+function useCounter(target: number, duration = 900) {
+  const [val, setVal] = useState(0)
+  useEffect(() => {
+    if (!target) { setVal(0); return }
+    const start = Date.now()
+    const tick = () => {
+      const p = Math.min((Date.now() - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setVal(Math.floor(target * eased))
+      if (p < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }, [target, duration])
+  return val
+}
 
 export default function Profile() {
   const navigate = useNavigate()
@@ -19,6 +35,15 @@ export default function Profile() {
     queryKey: ['profile-favorites'],
     queryFn: () => api.get('/api/profile/favorites').then((r) => r.data),
   })
+
+  const { data: orders = [] } = useQuery<{ total?: number; id: number }[]>({
+    queryKey: ['profile-orders'],
+    queryFn: () => api.get('/api/orders').then((r) => r.data),
+  })
+
+  const orderCount = orders.length
+  const totalSpent = orders.reduce((sum, o) => sum + (o.total ?? 0), 0)
+  const balance = 0 // balance non dispo dans /api/orders
 
   const removeFavorite = useMutation({
     mutationFn: (productId: number) => api.delete(`/api/profile/favorites/${productId}`),
@@ -84,6 +109,13 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, padding: '12px 0' }}>
+          <StatCard label="Solde" value={balance} suffix="€" />
+          <StatCard label="Commandes" value={orderCount} />
+          <StatCard label="Dépensé" value={Math.round(totalSpent)} suffix="€" />
+        </div>
+
         {/* Navigation */}
         <div style={{ background: '#111', borderRadius: 14, border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
           <div style={{ padding: '11px 15px 0' }}>
@@ -141,6 +173,45 @@ export default function Profile() {
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');
         @keyframes shimmer { 0%,100%{opacity:0.4} 50%{opacity:0.7} }
       `}</style>
+    </div>
+  )
+}
+
+function StatCard({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
+  const animated = useCounter(value)
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.03)',
+      border: '1px solid rgba(251,191,36,0.1)',
+      borderRadius: 12,
+      padding: 14,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 5,
+    }}>
+      <div style={{
+        fontFamily: '"JetBrains Mono", monospace',
+        fontSize: 8,
+        letterSpacing: '0.2em',
+        color: 'rgba(255,255,255,0.3)',
+        textTransform: 'uppercase',
+      }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+        <span style={{
+          fontFamily: '"Bebas Neue", "Impact", sans-serif',
+          fontSize: 26,
+          color: '#FBBF24',
+          lineHeight: 1,
+        }}>{animated}</span>
+        {suffix && (
+          <span style={{
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 10,
+            color: 'rgba(251,191,36,0.5)',
+            lineHeight: 1,
+          }}>{suffix}</span>
+        )}
+      </div>
     </div>
   )
 }

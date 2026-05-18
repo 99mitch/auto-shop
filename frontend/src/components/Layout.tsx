@@ -15,8 +15,16 @@ export default function Layout() {
         ...(noScroll ? { height: '100vh', overflow: 'hidden' } : { minHeight: '100vh' }),
       }}
     >
+      <style>{`
+        @keyframes pageIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
       <main style={noScroll ? { height: '100%' } : { paddingBottom: '6rem' }}>
-        <Outlet />
+        <div key={pathname} style={{ animation: 'pageIn 0.25s ease-out' }}>
+          <Outlet />
+        </div>
       </main>
     </div>
   )

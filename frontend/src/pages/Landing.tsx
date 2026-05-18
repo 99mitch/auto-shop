@@ -2,6 +2,32 @@ import { useNavigate } from 'react-router-dom'
 import CartIcon from '../components/CartIcon'
 import JokerPlayingCard from '../components/JokerPlayingCard'
 
+function Ticker() {
+  const text = 'STOCK LIVE  ·  CC DISPONIBLES  ·  FULLZ CERTIFIÉS  ·  RESTOCK QUOTIDIEN  ·  PAIEMENT CRYPTO  ·  LIVRAISON IMMÉDIATE  ·'
+  return (
+    <div style={{
+      height: 22, overflow: 'hidden',
+      background: 'rgba(251,191,36,0.03)',
+      borderTop: '1px solid rgba(251,191,36,0.08)',
+      borderBottom: '1px solid rgba(251,191,36,0.08)',
+      position: 'relative', zIndex: 10,
+      display: 'flex', alignItems: 'center',
+    }}>
+      <div style={{
+        display: 'flex', whiteSpace: 'nowrap',
+        animation: 'ticker-scroll 22s linear infinite',
+      }}>
+        <span style={{
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: 8, letterSpacing: '0.18em', fontWeight: 700,
+          color: 'rgba(251,191,36,0.45)',
+          paddingRight: '2em',
+        }}>{text}&nbsp;&nbsp;{text}</span>
+      </div>
+    </div>
+  )
+}
+
 export default function Landing() {
   const navigate = useNavigate()
 
@@ -54,7 +80,7 @@ export default function Landing() {
         }}>
           marketplace
         </div>
-        <h1 style={{
+        <h1 className="fullz-glitch" style={{
           margin: 0,
           fontSize: 64, fontWeight: 900, lineHeight: 1,
           color: '#ffffff',
@@ -68,6 +94,8 @@ export default function Landing() {
           background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
         }} />
       </div>
+
+      <Ticker />
 
       {/* Two CTA panels */}
       <div style={{
@@ -257,6 +285,39 @@ export default function Landing() {
           50% { opacity: 1; }
           55% { opacity: 0.6; }
           60% { opacity: 1; }
+        }
+        @keyframes ticker-scroll {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        .fullz-glitch {
+          animation: fullz-glitch 7s steps(1) infinite;
+        }
+        @keyframes fullz-glitch {
+          0%, 80%, 100% {
+            text-shadow: none;
+            transform: translateX(0);
+          }
+          81% {
+            text-shadow: -3px 0 rgba(255,0,128,0.7), 3px 0 rgba(0,255,255,0.7);
+            transform: translateX(-2px);
+          }
+          82.5% {
+            text-shadow: 3px 0 rgba(255,0,128,0.5), -3px 0 rgba(0,255,255,0.5);
+            transform: translateX(2px);
+          }
+          83.5% {
+            text-shadow: none;
+            transform: translateX(0);
+          }
+          84% {
+            text-shadow: -1px 0 rgba(255,0,128,0.4);
+            transform: translateX(-1px);
+          }
+          85% {
+            text-shadow: none;
+            transform: translateX(0);
+          }
         }
       `}</style>
     </div>
