@@ -156,32 +156,33 @@ function CardBack() {
 
 export default function JokerPlayingCard({ width = W, spinDuration = '4s' }: Props) {
   const scale = width / W
-  const h = H * scale
 
   return (
     <>
-      <div style={{ perspective: '700px' }}>
-        <div style={{
-          width, height: h,
-          position: 'relative',
-          transformStyle: 'preserve-3d',
-          animation: `joker-spin ${spinDuration} linear infinite`,
-          transform: `scale(${scale})`,
-          transformOrigin: 'top left',
-          ...(scale !== 1 ? { marginBottom: h - H } : {}),
-        }}>
-          {/* Front */}
-          <div style={{ backfaceVisibility: 'hidden', width: W, height: H }}>
-            <CardFace />
-          </div>
-          {/* Back */}
+      {/* Scale wrapper — never conflicts with the rotation animation */}
+      <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center', lineHeight: 0 }}>
+        {/* Perspective container */}
+        <div style={{ perspective: '700px' }}>
+          {/* Spinning element — transform-origin defaults to 50% 50% (center) */}
           <div style={{
-            position: 'absolute', inset: 0,
-            backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
             width: W, height: H,
+            position: 'relative',
+            transformStyle: 'preserve-3d',
+            animation: `joker-spin ${spinDuration} linear infinite`,
           }}>
-            <CardBack />
+            {/* Front */}
+            <div style={{ backfaceVisibility: 'hidden', width: W, height: H }}>
+              <CardFace />
+            </div>
+            {/* Back */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              backfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+              width: W, height: H,
+            }}>
+              <CardBack />
+            </div>
           </div>
         </div>
       </div>
