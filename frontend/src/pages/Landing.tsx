@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import CartIcon from '../components/CartIcon'
-import Logo from '../components/Logo'
+import JokerPlayingCard from '../components/JokerPlayingCard'
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -44,7 +44,9 @@ export default function Landing() {
         padding: '36px 0 20px',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
       }}>
-        <Logo size={52} style={{ marginBottom: 12, filter: 'drop-shadow(0 0 12px rgba(251,191,36,0.35))' }} />
+        <div style={{ marginBottom: 14, filter: 'drop-shadow(0 0 14px rgba(251,191,36,0.4))' }}>
+          <JokerPlayingCard width={76} spinDuration="4s" />
+        </div>
         <div style={{
           fontSize: 11, fontWeight: 700, letterSpacing: '0.35em',
           color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase',
