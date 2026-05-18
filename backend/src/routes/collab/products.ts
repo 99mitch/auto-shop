@@ -11,7 +11,7 @@ function parseImages(raw: string): string[] {
 
 router.get('/', async (req: AuthRequest, res) => {
   const products = await prisma.product.findMany({
-    where: { collaboratorId: req.userId!, isActive: true },
+    where: { collaboratorId: req.userId! },
     include: { category: true },
     orderBy: { id: 'desc' },
   })
@@ -19,10 +19,16 @@ router.get('/', async (req: AuthRequest, res) => {
 })
 
 router.post('/', async (req: AuthRequest, res) => {
-  const { categoryId, name, description, price, stock, imageUrl, images } = req.body
+  const { categoryId, name, description, costEur, stock, imageUrl, images } = req.body
 
-  if (!name || price == null) {
-    res.status(400).json({ error: 'Missing required fields' })
+  if (!name || costEur == null) {
+    res.status(400).json({ error: 'Missing required fields (name, costEur)' })
+    return
+  }
+
+  const cost = parseFloat(costEur)
+  if (!Number.isFinite(cost) || cost <= 0) {
+    res.status(400).json({ error: 'costEur must be a positive number' })
     return
   }
 
@@ -31,11 +37,13 @@ router.post('/', async (req: AuthRequest, res) => {
       categoryId: categoryId ? parseInt(categoryId) : null,
       name,
       description: description ?? '',
-      price: parseFloat(price),
+      price: cost,
+      costEur: cost,
       stock: parseInt(stock ?? 0),
       imageUrl: imageUrl ?? '',
       images: JSON.stringify(images ?? []),
       collaboratorId: req.userId!,
+      isActive: false,
     },
   })
 
@@ -51,14 +59,14 @@ router.put('/:id', async (req: AuthRequest, res) => {
     return
   }
 
-  const { name, description, price, stock, imageUrl, images } = req.body
+  const { name, description, costEur, stock, imageUrl, images } = req.body
 
   const updated = await prisma.product.update({
     where: { id },
     data: {
       ...(name !== undefined && { name }),
       ...(description !== undefined && { description }),
-      ...(price !== undefined && { price: parseFloat(price) }),
+      ...(costEur !== undefined && { costEur: parseFloat(costEur) }),
       ...(stock !== undefined && { stock: parseInt(stock) }),
       ...(imageUrl !== undefined && { imageUrl }),
       ...(images !== undefined && { images: JSON.stringify(images) }),

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express'
 import crypto from 'crypto'
 import { prisma } from '../prisma'
 import { notify } from '../lib/notify'
-import { fulfillCCOrder, fulfillDataOrder } from '../lib/fulfillment'
+import { fulfillCCOrder, fulfillDataOrder, applyPayoutResults } from '../lib/fulfillment'
 import { getAdminIds } from '../middleware/admin'
 
 const router = Router()
@@ -53,7 +53,20 @@ router.post('/', async (req: Request, res: Response) => {
     return
   }
 
-  const { event, paymentId, metadata } = req.body
+  const { event, paymentId, metadata, payoutResults } = req.body
+
+  if (event === 'payment.swept') {
+    try {
+      const m = metadata ?? {}
+      if (m.type === 'order' && m.refId && Array.isArray(payoutResults)) {
+        await applyPayoutResults(m.refId, payoutResults)
+      }
+    } catch (err) {
+      console.error('[webhook] swept handler error:', err)
+    }
+    res.json({ ok: true })
+    return
+  }
 
   if (event !== 'payment.confirmed') {
     res.json({ ok: true })

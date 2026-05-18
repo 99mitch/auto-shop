@@ -18,13 +18,24 @@ export interface CryptoPaymentResult {
   exchangeRate: number | null
 }
 
+export interface PayoutSplitEntry {
+  collabId: number
+  address: string
+  currency: 'USDT' | 'ETH' | 'SOL'
+  ratio: number
+}
+
 export async function createCryptoPayment(
   amount: number,
   description: string,
   metadata: Record<string, unknown>,
-  currency: 'USDT' | 'ETH' | 'SOL' = 'USDT'
+  currency: 'USDT' | 'ETH' | 'SOL' = 'USDT',
+  payoutSplit?: PayoutSplitEntry[]
 ): Promise<CryptoPaymentResult> {
-  const { data } = await client.post('/api/payments', { amount, description, metadata, currency })
+  const fullMetadata = payoutSplit && payoutSplit.length > 0
+    ? { ...metadata, payoutSplit }
+    : metadata
+  const { data } = await client.post('/api/payments', { amount, description, metadata: fullMetadata, currency })
   return data.payment
 }
 

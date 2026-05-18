@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { CreateOrderSchema } from 'floramini-types'
 import { fulfillCCOrder } from '../lib/fulfillment'
 import { createCryptoPayment } from '../lib/cryptoApi'
+import { buildPayoutSplit } from '../lib/payoutSplit'
 
 const router = Router()
 
@@ -177,12 +178,19 @@ router.post('/:id/pay', async (req: AuthRequest, res) => {
     }
 
     // CRYPTO
-    const payment = await createCryptoPayment(order.total, `Commande #${id}`, {
-      type: 'order',
-      refId: id,
-      userId: req.userId!,
-    }, cryptoCurrency)
-    await prisma.order.update({ where: { id }, data: { paymentMethod: 'CRYPTO', cryptoPaymentId: payment.paymentId } })
+    const { payoutSplit, unfundedCollabs } = await buildPayoutSplit(id, cryptoCurrency)
+    const snapshot = JSON.stringify({ payoutSplit, unfundedCollabs })
+    const payment = await createCryptoPayment(
+      order.total,
+      `Commande #${id}`,
+      { type: 'order', refId: id, userId: req.userId! },
+      cryptoCurrency,
+      payoutSplit,
+    )
+    await prisma.order.update({
+      where: { id },
+      data: { paymentMethod: 'CRYPTO', cryptoPaymentId: payment.paymentId, payoutSplitSnapshot: snapshot },
+    })
     res.json({ cryptoPayment: payment })
   } catch (err) {
     console.error('[orders] pay error:', err)

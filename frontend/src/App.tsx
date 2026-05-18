@@ -25,6 +25,7 @@ import AdminPreOrders from './pages/admin/AdminPreOrders'
 import CollabDashboard from './pages/collab/CollabDashboard'
 import CollabGuard from './pages/collab/CollabGuard'
 import CollabAddCard from './pages/collab/CollabAddCard'
+import CollabWallets from './pages/collab/CollabWallets'
 import DonneesSelection from './pages/DonneesSelection'
 import ExtractionPage from './pages/ExtractionPage'
 import MesCommandesDonnees from './pages/MesCommandesDonnees'
@@ -56,6 +57,7 @@ const router = createBrowserRouter([
           { index: true, element: <CollabDashboard /> },
           { path: 'add', element: <CollabAddCard /> },
           { path: 'edit/:id', element: <CollabAddCard /> },
+          { path: 'wallets', element: <CollabWallets /> },
         ],
       },
       {

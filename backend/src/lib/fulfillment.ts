@@ -3,6 +3,35 @@ import { deliverCards, notify, notifyOrderStatus } from './notify'
 import { InputFile } from 'grammy'
 import { bot } from '../bot'
 
+export interface PayoutResultEntry {
+  collabId: number
+  address: string
+  amount: number
+  currency: string
+  txHash: string
+  status: 'success' | 'failed'
+  error?: string
+}
+
+interface PayoutSnapshotEntry {
+  collabId: number
+  address: string
+  currency: string
+}
+
+function readSnapshot(raw: string | null): { fundedCollabIds: Set<number>; snapshotByCollab: Map<number, PayoutSnapshotEntry> } {
+  const out = { fundedCollabIds: new Set<number>(), snapshotByCollab: new Map<number, PayoutSnapshotEntry>() }
+  if (!raw) return out
+  try {
+    const parsed = JSON.parse(raw) as { payoutSplit?: PayoutSnapshotEntry[] }
+    for (const s of parsed.payoutSplit ?? []) {
+      out.fundedCollabIds.add(s.collabId)
+      out.snapshotByCollab.set(s.collabId, s)
+    }
+  } catch {}
+  return out
+}
+
 export async function fulfillCCOrder(orderId: number): Promise<void> {
   // Atomic status transition — prevents double-delivery under concurrent webhook calls
   const { count } = await prisma.order.updateMany({
@@ -15,21 +44,39 @@ export async function fulfillCCOrder(orderId: number): Promise<void> {
     where: { id: orderId },
     include: {
       user: true,
-      items: { include: { product: { select: { collaboratorId: true, name: true } } } },
+      items: { include: { product: { select: { collaboratorId: true, name: true, costEur: true } } } },
     },
   })
   if (!order) return
 
+  const { fundedCollabIds, snapshotByCollab } = readSnapshot(order.payoutSplitSnapshot)
+
   const earningsToCreate = order.items
     .filter((item) => item.product.collaboratorId !== null)
     .map((item) => {
+      const collabId = item.product.collaboratorId!
       const gross = item.unitPrice * item.quantity
+      const cost = item.product.costEur != null
+        ? item.product.costEur * item.quantity
+        : gross * 0.8
+      const amount = parseFloat(cost.toFixed(2))
+      const platformFee = parseFloat((gross - cost).toFixed(2))
+
+      const snap = snapshotByCollab.get(collabId)
+      const isFunded = fundedCollabIds.has(collabId)
+
       return {
         orderId: order.id,
         orderItemId: item.id,
-        collaboratorId: item.product.collaboratorId!,
-        amount: parseFloat((gross * 0.8).toFixed(2)),
-        platformFee: parseFloat((gross * 0.2).toFixed(2)),
+        collaboratorId: collabId,
+        amount,
+        platformFee,
+        status: isFunded ? 'PENDING' : 'CREDITED_OFFCHAIN',
+        currency: snap?.currency ?? null,
+        cryptoAmount: null,
+        txHash: null,
+        walletAddress: snap?.address ?? null,
+        errorMessage: null,
       }
     })
   if (earningsToCreate.length > 0) {
@@ -57,6 +104,38 @@ export async function fulfillCCOrder(orderId: number): Promise<void> {
   if (order.user.telegramId) {
     await deliverCards(order.user.telegramId, order.id, cards)
     notifyOrderStatus(order.user.telegramId, order.id, 'CONFIRMED', order.total)
+  }
+}
+
+export async function applyPayoutResults(orderId: number, payoutResults: PayoutResultEntry[]): Promise<void> {
+  if (!payoutResults || payoutResults.length === 0) return
+  const earnings = await prisma.collaboratorEarning.findMany({ where: { orderId } })
+  if (earnings.length === 0) return
+
+  const byCollab = new Map<number, typeof earnings>()
+  for (const e of earnings) {
+    const arr = byCollab.get(e.collaboratorId) ?? []
+    arr.push(e)
+    byCollab.set(e.collaboratorId, arr)
+  }
+
+  for (const r of payoutResults) {
+    const list = byCollab.get(r.collabId)
+    if (!list) continue
+    for (const e of list) {
+      if (e.status === 'PAID_ONCHAIN') continue
+      await prisma.collaboratorEarning.update({
+        where: { id: e.id },
+        data: {
+          status: r.status === 'success' ? 'PAID_ONCHAIN' : 'PENDING',
+          currency: r.currency,
+          cryptoAmount: r.amount,
+          txHash: r.txHash || null,
+          walletAddress: r.address,
+          errorMessage: r.status === 'success' ? null : (r.error ?? 'payout transfer failed'),
+        },
+      })
+    }
   }
 }
 

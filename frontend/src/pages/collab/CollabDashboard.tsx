@@ -13,6 +13,8 @@ interface CollabStats {
   productCount: number
   recentEarnings: Array<{
     id: number; amount: number; platformFee: number; createdAt: string
+    status?: string; currency?: string | null; cryptoAmount?: number | null
+    txHash?: string | null; walletAddress?: string | null
     orderItem: { quantity: number; unitPrice: number; product: { name: string; imageUrl: string } }
     order: { createdAt: string }
   }>
@@ -21,7 +23,7 @@ interface CollabStats {
 }
 
 interface CollabProduct {
-  id: number; name: string; description: string; price: number; stock: number
+  id: number; name: string; description: string; price: number; costEur: number | null; stock: number
   imageUrl: string; isActive: boolean; categoryId: number | null; collaboratorId: number | null
 }
 
@@ -233,7 +235,13 @@ function ProductRow({
             <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 4, background: lc.bg, color: lc.text, border: `1px solid ${lc.border}`, ...MONO, letterSpacing: '0.06em', flexShrink: 0 }}>{meta.level}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ ...MONO, fontSize: 11, color: GOLD }}>€{Number(p.price).toFixed(2)}</span>
+            <span style={{ ...MONO, fontSize: 11, color: GOLD }}>€{Number(p.costEur ?? p.price).toFixed(2)}</span>
+            {p.costEur != null && p.price !== p.costEur && (
+              <span style={{ ...MONO, fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>vente €{Number(p.price).toFixed(2)}</span>
+            )}
+            {!p.isActive && (
+              <span style={{ ...MONO, fontSize: 8, color: '#facc15', background: 'rgba(250,204,21,0.1)', border: '1px solid rgba(250,204,21,0.25)', borderRadius: 4, padding: '1px 5px' }}>EN MODÉRATION</span>
+            )}
             {meta.bin && <span style={{ ...MONO, fontSize: 9, color: 'rgba(255,255,255,0.2)' }}>BIN {meta.bin}</span>}
             {inv ? (
               <span style={{ ...MONO, fontSize: 9, color: inv.unsold > 0 ? SUCCESS : DANGER, background: inv.unsold > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${inv.unsold > 0 ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 4, padding: '1px 5px' }}>
@@ -352,6 +360,68 @@ export default function CollabDashboard() {
             </div>
           ) : null}
         </div>
+
+        {/* Mes wallets shortcut */}
+        <button
+          onClick={() => navigate('/collab/wallets')}
+          style={{
+            background: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14,
+            padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12,
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+          }}
+        >
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>💼</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ ...LABEL_STYLE, marginBottom: 2 }}>PAYOUTS CRYPTO</div>
+            <div style={{ ...BEBAS, color: '#fff', fontSize: 15, letterSpacing: '0.06em', lineHeight: 1 }}>MES WALLETS</div>
+          </div>
+          <div style={{ color: 'rgba(251,191,36,0.6)', fontSize: 16 }}>›</div>
+        </button>
+
+        {/* Recent earnings */}
+        {stats && stats.recentEarnings && stats.recentEarnings.length > 0 && (
+          <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 14px 6px' }}>
+              <div style={{ ...LABEL_STYLE }}>DERNIERS GAINS</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {stats.recentEarnings.slice(0, 8).map((e, idx) => {
+                const status = e.status ?? 'PAID_ONCHAIN'
+                const statusInfo = status === 'PAID_ONCHAIN'
+                  ? { label: '✓ PAYÉ', color: SUCCESS, bg: 'rgba(74,222,128,0.08)', border: 'rgba(74,222,128,0.2)' }
+                  : status === 'PENDING'
+                  ? { label: '⏳ EN COURS', color: '#facc15', bg: 'rgba(250,204,21,0.08)', border: 'rgba(250,204,21,0.2)' }
+                  : { label: '💰 CRÉDITÉ', color: '#9ca3af', bg: 'rgba(156,163,175,0.08)', border: 'rgba(156,163,175,0.2)' }
+                return (
+                  <div key={e.id} style={{ padding: '10px 14px', borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: '#fff', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 3 }}>
+                        {e.orderItem.product.name}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ ...MONO, fontSize: 10, color: GOLD }}>€{e.amount.toFixed(2)}</span>
+                        {e.cryptoAmount != null && e.currency && (
+                          <span style={{ ...MONO, fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>
+                            {e.cryptoAmount.toFixed(e.currency === 'USDT' ? 2 : 6)} {e.currency}
+                          </span>
+                        )}
+                        {e.txHash && (
+                          <span style={{ ...MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>{e.txHash.slice(0, 8)}…</span>
+                        )}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: 8, padding: '3px 7px', borderRadius: 20,
+                      background: statusInfo.bg, color: statusInfo.color,
+                      border: `1px solid ${statusInfo.border}`,
+                      ...MONO, letterSpacing: '0.08em',
+                    }}>{statusInfo.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* My cards */}
         <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>

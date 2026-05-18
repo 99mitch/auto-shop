@@ -38,6 +38,7 @@ interface CollabProduct {
   name: string
   description: string
   price: number
+  costEur: number | null
   stock: number
   imageUrl: string
   isActive: boolean
@@ -133,7 +134,7 @@ function buildProductPayload(form: CardForm) {
       type: form.cardType, device: form.device, source: form.source,
       recoveryDate: form.recoveryDate, ddn: form.ddn, cp: form.cp, age: form.age,
     }),
-    price: parseFloat(form.prix),
+    costEur: parseFloat(form.prix),
     stock: parseInt(form.stock) || 0,
     categoryId: form.categoryId || undefined,
     imageUrl: form.bin.length >= 6 ? `https://cardimages.imaginecurve.com/cards/${form.bin.slice(0, 6)}.png` : '',
@@ -288,15 +289,18 @@ function CardFormFields({ form, onChange, categories }: {
       {/* Prix + Stock */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div>
-          <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Prix (€)</div>
+          <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Mon prix (€)</div>
           <input
             style={INPUT_STYLE}
             type="number"
             value={form.prix}
             onChange={e => set({ prix: e.target.value })}
-            placeholder="49.99"
+            placeholder="15"
             inputMode="decimal"
           />
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', ...MONO, marginTop: 4 }}>
+            Tu reçois ce montant à chaque vente.
+          </div>
         </div>
         <div>
           <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Stock</div>
@@ -386,7 +390,7 @@ export default function CollabAddCard() {
         bin: meta.bin, bank: meta.bank, level: meta.level, network: meta.network,
         cardType: meta.type, device: meta.device, source: meta.source,
         ddn: meta.ddn, recoveryDate: meta.recoveryDate,
-        prix: String(existingProduct.price), stock: String(existingProduct.stock),
+        prix: String(existingProduct.costEur ?? existingProduct.price), stock: String(existingProduct.stock),
         cp: meta.cp, age: meta.age, categoryId: existingProduct.categoryId ?? 0,
       })
     }

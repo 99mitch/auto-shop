@@ -59,6 +59,7 @@ export interface Product {
   name: string
   description: string
   price: number
+  costEur?: number | null
   stock: number
   imageUrl: string
   images: string[]

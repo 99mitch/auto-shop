@@ -25,6 +25,18 @@ model User {
   favorites    Favorite[]
   products     Product[]             @relation("CollaboratorProducts")
   earnings     CollaboratorEarning[]
+  wallets      CollabWallet[]
+}
+
+model CollabWallet {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency  String
+  address   String
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, currency])
 }
 
 model Address {
@@ -54,6 +66,7 @@ model Product {
   name           String
   description    String
   price          Float
+  costEur        Float?
   stock          Int                   @default(0)
   imageUrl       String
   images         String                @default("[]")
@@ -80,6 +93,7 @@ model Order {
   createdAt       DateTime              @default(now())
   paymentMethod   String?
   cryptoPaymentId String?
+  payoutSplitSnapshot String?
   items           OrderItem[]
   earnings      CollaboratorEarning[]
   cardInventory CardInventory[]
@@ -107,6 +121,12 @@ model CollaboratorEarning {
   collaborator   User      @relation(fields: [collaboratorId], references: [id])
   amount         Float
   platformFee    Float
+  status         String    @default("CREDITED_OFFCHAIN")
+  currency       String?
+  cryptoAmount   Float?
+  txHash         String?
+  walletAddress  String?
+  errorMessage   String?
   createdAt      DateTime  @default(now())
 }
 

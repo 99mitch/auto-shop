@@ -304,10 +304,22 @@ function ProductCard({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: p.isActive ? '#fff' : 'rgba(255,255,255,0.3)', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.03em' }}>{meta.bank || p.name}</span>
             <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: lc.bg, color: lc.text, border: `1px solid ${lc.border}`, fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.06em' }}>{meta.level}</span>
-            {!p.isActive && <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', fontFamily: '"JetBrains Mono",monospace' }}>OFF</span>}
+            {!p.isActive && p.collaboratorId ? (
+              <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 4, background: 'rgba(250,204,21,0.1)', color: '#facc15', border: '1px solid rgba(250,204,21,0.25)', fontFamily: '"JetBrains Mono",monospace' }}>MODÉRATION</span>
+            ) : !p.isActive ? (
+              <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', fontFamily: '"JetBrains Mono",monospace' }}>OFF</span>
+            ) : null}
+            {p.collaboratorId && (
+              <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 4, background: 'rgba(129,140,248,0.1)', color: '#818cf8', border: '1px solid rgba(129,140,248,0.25)', fontFamily: '"JetBrains Mono",monospace' }}>COLLAB</span>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 10, color: '#fbbf24', fontFamily: '"JetBrains Mono",monospace' }}>€{Number(p.price).toFixed(2)}</span>
+            {p.costEur != null && (
+              <span style={{ fontSize: 9, color: 'rgba(74,222,128,0.7)', fontFamily: '"JetBrains Mono",monospace', background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.15)', borderRadius: 4, padding: '1px 5px' }}>
+                coût €{Number(p.costEur).toFixed(2)} · marge €{Math.max(0, Number(p.price) - Number(p.costEur)).toFixed(2)}
+              </span>
+            )}
             {meta.bin && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontFamily: '"JetBrains Mono",monospace' }}>BIN {meta.bin}</span>}
             {inv ? (
               <span style={{ fontSize: 9, fontFamily: '"JetBrains Mono",monospace', color: inv.unsold > 0 ? 'rgba(74,222,128,0.7)' : 'rgba(239,68,68,0.6)' }}>
