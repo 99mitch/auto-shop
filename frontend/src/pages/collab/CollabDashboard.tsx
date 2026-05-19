@@ -121,95 +121,239 @@ function Badge({ label, color }: { label: string; color: { bg: string; text: str
   )
 }
 
-// ── BulkUpload per-product panel ───────────────────────────────────────────────
-function BulkUploadPanel({ productId, onDone }: { productId: number; onDone: () => void }) {
-  const [text, setText] = useState('')
-  const [result, setResult] = useState<{ added: number; stock: number } | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  const [testSent, setTestSent] = useState(false)
+// ── Helpers client-side parsing ───────────────────────────────────────────────
+function clientParseCard(raw: string): { numero?: string; titulaire?: string; expiration?: string; email?: string } {
+  const line = raw.trim()
+  const result: { numero?: string; titulaire?: string; expiration?: string; email?: string } = {}
+  try { const j = JSON.parse(line); if (j.numero) return j } catch {}
+  const parts = line.split('|').map((p: string) => p.trim())
+  if (parts.length >= 3) {
+    if (/^\d{13,19}$/.test(parts[0])) result.numero = parts[0]
+    if (/^\d{2}\/\d{2,4}$/.test(parts[1])) result.expiration = parts[1]
+    if (parts[3]) result.titulaire = parts[3]
+  } else {
+    const m = line.match(/\b\d{13,19}\b/); if (m) result.numero = m[0]
+    const e = line.match(/\b\d{2}\/\d{2,4}\b/); if (e) result.expiration = e[0]
+  }
+  const em = line.match(/\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/); if (em) result.email = em[0]
+  return result
+}
 
-  const validLines = text.split('\n').filter(l => /\d{13,19}/.test(l.trim()))
+function maskPan(n?: string) {
+  if (!n) return '???'
+  return '●●●● ●●●● ●●●● ' + n.slice(-4)
+}
+
+// ── Upload panel (fichier TXT ou via bot Telegram) ────────────────────────────
+function UploadPanel({ productId, onDone }: { productId: number; onDone: () => void }) {
+  const [mode, setMode] = useState<'file' | 'bot'>('file')
+  const [parsed, setParsed] = useState<{ raw: string; meta: ReturnType<typeof clientParseCard> }[] | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [result, setResult] = useState<{ added: number; stock: number } | null>(null)
+  const [botReady, setBotReady] = useState(false)
+
+  // Polling: détecte un upload bot en attente
+  const { data: botPending, refetch: refetchPending } = useQuery<{ productId: number; count: number; preview: string[] } | null>({
+    queryKey: ['bot-upload-pending'],
+    queryFn: () => api.get('/api/collab/products/bot-upload').then(r => r.data),
+    enabled: mode === 'bot' && botReady,
+    refetchInterval: 3000,
+  })
+
+  // Quand le bot envoie les cartes, afficher le récap
+  const pendingCards = botPending && botPending.productId === productId ? botPending : null
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setErr(null); setParsed(null); setResult(null)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l && /\d{13,19}/.test(l))
+      if (lines.length === 0) { setErr('Aucune carte détectée dans le fichier.'); return }
+      setParsed(lines.map(raw => ({ raw, meta: clientParseCard(raw) })))
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
 
   const upload = useMutation({
-    mutationFn: () => api.post(`/api/collab/products/${productId}/inventory/bulk`, {
-      lines: text.split('\n').filter(l => l.trim()),
-    }).then(r => r.data),
-    onSuccess: (data) => {
-      setResult(data)
-      setText('')
-      setErr(null)
-      onDone()
-    },
+    mutationFn: (lines: string[]) => api.post(`/api/collab/products/${productId}/inventory/bulk`, { lines }).then(r => r.data),
+    onSuccess: (data) => { setResult(data); setParsed(null); setErr(null); onDone() },
     onError: (e: any) => setErr(e?.response?.data?.error ?? 'Erreur upload'),
   })
 
-  const testDelivery = useMutation({
-    mutationFn: () => api.post(`/api/collab/products/${productId}/inventory/test-delivery`).then(r => r.data),
-    onSuccess: () => { setTestSent(true); setTimeout(() => setTestSent(false), 4000) },
-    onError: (e: any) => setErr(e?.response?.data?.error ?? 'Erreur test envoi'),
+  const startBotSession = useMutation({
+    mutationFn: () => api.post(`/api/collab/products/${productId}/inventory/bot-session`).then(r => r.data),
+    onSuccess: () => { setBotReady(true); setErr(null) },
+    onError: (e: any) => setErr(e?.response?.data?.error ?? 'Erreur session bot'),
+  })
+
+  const confirmBot = useMutation({
+    mutationFn: () => api.post('/api/collab/products/bot-upload/confirm').then(r => r.data),
+    onSuccess: (data) => { setResult(data); setBotReady(false); refetchPending(); onDone() },
+    onError: (e: any) => setErr(e?.response?.data?.error ?? 'Erreur confirmation'),
+  })
+
+  const cancelBot = useMutation({
+    mutationFn: () => api.delete('/api/collab/products/bot-upload').then(r => r.data),
+    onSuccess: () => { setBotReady(false); refetchPending() },
+  })
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1, padding: '7px 0', borderRadius: 7,
+    background: active ? 'rgba(251,191,36,0.1)' : 'transparent',
+    border: `1px solid ${active ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.07)'}`,
+    color: active ? GOLD : 'rgba(255,255,255,0.3)',
+    fontSize: 9, ...BEBAS, letterSpacing: '0.08em', cursor: 'pointer',
   })
 
   return (
-    <div style={{ padding: '10px 14px 12px', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(251,191,36,0.02)' }}>
-      <div style={{ ...LABEL_STYLE, color: 'rgba(251,191,36,0.4)', marginBottom: 7 }}>BULK UPLOAD CC</div>
-      <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.2)', marginBottom: 4, lineHeight: 1.6 }}>
-        Format attendu — une ligne par carte :<br />
-        <span style={{ color: 'rgba(251,191,36,0.5)' }}>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|telephone|ip</span>
+    <div style={{ padding: '10px 14px 14px', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(251,191,36,0.02)' }}>
+      <div style={{ ...LABEL_STYLE, color: 'rgba(251,191,36,0.4)', marginBottom: 8 }}>AJOUTER DES CARTES</div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        <button style={tabStyle(mode === 'file')} onClick={() => { setMode('file'); setParsed(null); setErr(null); setResult(null) }}>
+          📄 FICHIER TXT
+        </button>
+        <button style={tabStyle(mode === 'bot')} onClick={() => { setMode('bot'); setParsed(null); setErr(null); setResult(null) }}>
+          🤖 VIA TELEGRAM
+        </button>
       </div>
-      <textarea
-        value={text}
-        onChange={e => { setText(e.target.value); setResult(null) }}
-        placeholder={'4973557174338016|06/26|280|Anaelle Auvert|2004-03-29|82 rue du recueil|Villeneuve D\'Ascq|anaelle@icloud.com|0768452742|90.39.5.28\n5500005555555559|01/27|456|Marie Martin|1990-05-14|5 av Victor Hugo|Paris|marie.martin@gmail.com|0612345678|192.168.1.1'}
-        style={{
-          width: '100%', minHeight: 90, background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
-          color: '#fff', fontSize: 11, ...MONO, padding: '8px 10px',
-          resize: 'vertical', outline: 'none', boxSizing: 'border-box',
-        }}
-      />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7, gap: 8 }}>
-        <span style={{ fontSize: 9, ...MONO, color: validLines.length > 0 ? 'rgba(74,222,128,0.7)' : 'rgba(255,255,255,0.2)' }}>
-          {validLines.length} ligne{validLines.length !== 1 ? 's' : ''} valide{validLines.length !== 1 ? 's' : ''}
-        </span>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button
-            onClick={() => testDelivery.mutate()}
-            disabled={testDelivery.isPending}
-            title="Envoie une carte de l'inventaire sur ton Telegram pour tester le format"
-            style={{
-              padding: '6px 12px', borderRadius: 7,
-              background: testSent ? 'rgba(74,222,128,0.12)' : 'rgba(34,211,238,0.08)',
-              border: `1px solid ${testSent ? 'rgba(74,222,128,0.35)' : 'rgba(34,211,238,0.25)'}`,
-              color: testSent ? SUCCESS : 'rgba(34,211,238,0.8)',
-              fontSize: 10, ...BEBAS, letterSpacing: '0.08em',
-              cursor: testDelivery.isPending ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {testDelivery.isPending ? '...' : testSent ? 'ENVOYÉ ✓' : 'TEST TG'}
-          </button>
-          <button
-            onClick={() => upload.mutate()}
-            disabled={upload.isPending || validLines.length === 0}
-            style={{
-              padding: '6px 14px', borderRadius: 7,
-              background: validLines.length > 0 ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${validLines.length > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.07)'}`,
-              color: validLines.length > 0 ? GOLD : 'rgba(255,255,255,0.2)',
-              fontSize: 10, ...BEBAS, letterSpacing: '0.08em',
-              cursor: upload.isPending || validLines.length === 0 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {upload.isPending ? '...' : 'UPLOAD'}
-          </button>
-        </div>
-      </div>
-      {result && (
-        <div style={{ marginTop: 7, fontSize: 10, ...MONO, color: SUCCESS, padding: '5px 9px', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)', borderRadius: 6 }}>
-          +{result.added} carte{result.added !== 1 ? 's' : ''} ajoutée{result.added !== 1 ? 's' : ''} · stock: {result.stock}
+
+      {/* ── Mode fichier TXT ── */}
+      {mode === 'file' && !parsed && !result && (
+        <label style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 6, padding: '18px 14px', borderRadius: 10,
+          border: '1px dashed rgba(251,191,36,0.25)', background: 'rgba(251,191,36,0.03)',
+          cursor: 'pointer',
+        }}>
+          <span style={{ fontSize: 22 }}>📄</span>
+          <span style={{ fontSize: 10, ...BEBAS, letterSpacing: '0.1em', color: GOLD }}>CHOISIR UN FICHIER .TXT</span>
+          <span style={{ fontSize: 8, ...MONO, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>
+            Format : pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip
+          </span>
+          <input type="file" accept=".txt,text/plain" onChange={handleFile} style={{ display: 'none' }} />
+        </label>
+      )}
+
+      {/* ── Récap fichier ── */}
+      {mode === 'file' && parsed && !result && (
+        <div>
+          <div style={{ fontSize: 10, ...MONO, color: SUCCESS, marginBottom: 8 }}>
+            ✅ {parsed.length} carte{parsed.length > 1 ? 's' : ''} détectée{parsed.length > 1 ? 's' : ''}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflowY: 'auto', marginBottom: 10 }}>
+            {parsed.map((c, i) => (
+              <div key={i} style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 7, border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontSize: 10, ...MONO, color: '#fff' }}>{maskPan(c.meta.numero)}</div>
+                <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                  {[c.meta.titulaire, c.meta.expiration, c.meta.email].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => upload.mutate(parsed.map(c => c.raw))}
+              disabled={upload.isPending}
+              style={{ flex: 1, padding: '9px 0', borderRadius: 8, background: GOLD, border: 'none', color: '#050505', fontSize: 11, ...BEBAS, letterSpacing: '0.1em', cursor: upload.isPending ? 'not-allowed' : 'pointer' }}
+            >
+              {upload.isPending ? '...' : `✅ CONFIRMER (${parsed.length} cartes)`}
+            </button>
+            <button
+              onClick={() => setParsed(null)}
+              style={{ padding: '9px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)', fontSize: 11, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}
+            >
+              ✗ ANNULER
+            </button>
+          </div>
         </div>
       )}
+
+      {/* ── Mode bot Telegram ── */}
+      {mode === 'bot' && !pendingCards && !result && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '12px 0' }}>
+          {!botReady ? (
+            <>
+              <span style={{ fontSize: 28 }}>🤖</span>
+              <span style={{ fontSize: 10, ...MONO, color: 'rgba(255,255,255,0.35)', textAlign: 'center', lineHeight: 1.6 }}>
+                Le bot Telegram va se mettre en attente.<br/>Envoie tes cartes directement dans le chat.
+              </span>
+              <button
+                onClick={() => startBotSession.mutate()}
+                disabled={startBotSession.isPending}
+                style={{ padding: '10px 22px', borderRadius: 9, background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.35)', color: GOLD, fontSize: 11, ...BEBAS, letterSpacing: '0.1em', cursor: startBotSession.isPending ? 'not-allowed' : 'pointer' }}
+              >
+                {startBotSession.isPending ? '...' : '🤖 ACTIVER LE BOT'}
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: SUCCESS, boxShadow: `0 0 8px ${SUCCESS}` }} />
+              <span style={{ fontSize: 10, ...MONO, color: SUCCESS }}>BOT EN ATTENTE…</span>
+              <span style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 1.6 }}>
+                Envoie tes cartes dans le chat Telegram.<br/>La mini app se mettra à jour automatiquement.
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Récap bot ── */}
+      {mode === 'bot' && pendingCards && !result && (
+        <div>
+          <div style={{ fontSize: 10, ...MONO, color: SUCCESS, marginBottom: 8 }}>
+            ✅ {pendingCards.count} carte{pendingCards.count > 1 ? 's' : ''} reçue{pendingCards.count > 1 ? 's' : ''} via Telegram
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 130, overflowY: 'auto', marginBottom: 10 }}>
+            {pendingCards.preview.map((raw, i) => {
+              const m = clientParseCard(raw)
+              return (
+                <div key={i} style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 7, border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: 10, ...MONO, color: '#fff' }}>{maskPan(m.numero)}</div>
+                  <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                    {[m.titulaire, m.expiration, m.email].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+              )
+            })}
+            {pendingCards.count > 5 && (
+              <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '4px 0' }}>
+                …et {pendingCards.count - 5} autre{pendingCards.count - 5 > 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => confirmBot.mutate()}
+              disabled={confirmBot.isPending}
+              style={{ flex: 1, padding: '9px 0', borderRadius: 8, background: GOLD, border: 'none', color: '#050505', fontSize: 11, ...BEBAS, letterSpacing: '0.1em', cursor: confirmBot.isPending ? 'not-allowed' : 'pointer' }}
+            >
+              {confirmBot.isPending ? '...' : `✅ CONFIRMER (${pendingCards.count} cartes)`}
+            </button>
+            <button
+              onClick={() => cancelBot.mutate()}
+              style={{ padding: '9px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)', fontSize: 11, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}
+            >
+              ✗ ANNULER
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Succès ── */}
+      {result && (
+        <div style={{ fontSize: 10, ...MONO, color: SUCCESS, padding: '8px 10px', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)', borderRadius: 8, textAlign: 'center' }}>
+          +{result.added} carte{result.added !== 1 ? 's' : ''} ajoutée{result.added !== 1 ? 's' : ''} · stock : {result.stock}
+        </div>
+      )}
+
       {err && (
-        <div style={{ marginTop: 7, fontSize: 10, ...MONO, color: DANGER, padding: '5px 9px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6 }}>
+        <div style={{ marginTop: 8, fontSize: 9, ...MONO, color: DANGER, padding: '5px 9px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6 }}>
           {err}
         </div>
       )}
@@ -311,7 +455,7 @@ function ProductRow({
           </div>
         )}
       </div>
-      {showBulk && <BulkUploadPanel productId={p.id} onDone={handleBulkDone} />}
+      {showBulk && <UploadPanel productId={p.id} onDone={handleBulkDone} />}
     </div>
   )
 }

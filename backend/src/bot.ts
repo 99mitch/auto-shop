@@ -1,4 +1,5 @@
 import { Bot, InlineKeyboard } from 'grammy'
+import { getSession, clearSession, setPending } from './lib/collabBotSession'
 
 const BOT_TOKEN = process.env.BOT_TOKEN
 if (!BOT_TOKEN) throw new Error('BOT_TOKEN environment variable is required')
@@ -30,4 +31,40 @@ bot.command('start', async (ctx) => {
 bot.command('shop', async (ctx) => {
   const keyboard = new InlineKeyboard().webApp('🃏 Ouvrir la boutique', MINI_APP_URL)
   await ctx.reply('Accédez à la boutique :', { reply_markup: keyboard })
+})
+
+// Réception de cartes depuis un collab en session active
+bot.on('message:text', async (ctx) => {
+  const telegramId = String(ctx.from?.id)
+  const session = getSession(telegramId)
+  if (!session) return
+
+  const lines = ctx.message.text
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l && /\d{13,19}/.test(l))
+
+  if (lines.length === 0) {
+    await ctx.reply(
+      '⚠️ Aucune carte détectée.\n\nFormat attendu (une ligne par carte) :\n<code>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip</code>',
+      { parse_mode: 'HTML' }
+    )
+    return
+  }
+
+  setPending(session.collabId, session.productId, lines)
+  clearSession(telegramId)
+
+  const preview = lines.slice(0, 5).map((l, i) => {
+    const pan = l.match(/\b(\d{13,19})\b/)?.[1] ?? '?'
+    const masked = pan.length > 4 ? '●●●● ' + pan.slice(-4) : pan
+    return `${i + 1}. ${masked}`
+  }).join('\n')
+  const more = lines.length > 5 ? `\n…et ${lines.length - 5} autre${lines.length - 5 > 1 ? 's' : ''}` : ''
+
+  const keyboard = new InlineKeyboard().webApp('📱 Confirmer dans la mini app', MINI_APP_URL + '/collab')
+  await ctx.reply(
+    `✅ <b>${lines.length} carte${lines.length > 1 ? 's' : ''} détectée${lines.length > 1 ? 's' : ''}</b>\n\n${preview}${more}\n\n📱 Ouvre la mini app pour confirmer ou annuler l'ajout.`,
+    { parse_mode: 'HTML', reply_markup: keyboard }
+  )
 })
