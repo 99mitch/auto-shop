@@ -101,6 +101,62 @@ router.get('/:id/inventory', async (req: AuthRequest, res) => {
   res.json({ total, unsold, sold: total - unsold })
 })
 
+// Parse a raw card line into structured JSON for delivery formatting
+function parseCardLine(raw: string): string {
+  const line = raw.trim()
+  if (!line) return line
+
+  // Already valid JSON with card fields → keep as-is
+  try {
+    const j = JSON.parse(line)
+    if (typeof j === 'object' && j !== null && (j.numero || j.pan)) return line
+  } catch {}
+
+  const result: Record<string, string> = {}
+
+  // Pipe-separated: pan|expiry|cvv|titulaire|ddn|adresse|ville|email|telephone|ip
+  const parts = line.split('|').map(p => p.trim())
+  if (parts.length >= 3) {
+    if (/^\d{13,19}$/.test(parts[0])) result.numero = parts[0]
+    if (/^\d{2}\/\d{2,4}$/.test(parts[1])) result.expiration = parts[1]
+    if (/^\d{3,4}$/.test(parts[2])) result.cvv = parts[2]
+    if (parts[3]) { result.titulaire = parts[3]; result.nom = parts[3] }
+    if (parts[4]) result.ddn = parts[4]
+    if (parts[5]) result.adresse = parts[5]
+    if (parts[6]) result.ville = parts[6]
+    if (parts[7] && parts[7].includes('@')) result.email = parts[7]
+    else if (parts[7]) result.telephone = parts[7]
+    if (parts[8] && parts[8].includes('@')) result.email = parts[8]
+    else if (parts[8]) result.telephone = parts[8]
+    if (parts[9]) result.ip = parts[9]
+    if (parts[10]) result.ip = parts[10]
+  }
+
+  // Regex auto-detection to fill missing fields
+  if (!result.email) {
+    const m = line.match(/\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/)
+    if (m) result.email = m[0]
+  }
+  if (!result.ip) {
+    const m = line.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/)
+    if (m) result.ip = m[0]
+  }
+  if (!result.telephone) {
+    const m = line.match(/\b(?:0[67]\d{8}|\+33\d{9,10}|\+\d{11,13})\b/)
+    if (m) result.telephone = m[0]
+  }
+  if (!result.numero) {
+    const m = line.match(/\b\d{13,19}\b/)
+    if (m) result.numero = m[0]
+  }
+
+  // Return JSON if we extracted at least the card number
+  if (result.numero) return JSON.stringify(result)
+
+  // Fallback: raw string
+  return line
+}
+
 // POST /:id/inventory/bulk — bulk upload CC lines (ownership check)
 router.post('/:id/inventory/bulk', async (req: AuthRequest, res) => {
   const productId = parseInt(req.params.id)
@@ -110,9 +166,12 @@ router.post('/:id/inventory/bulk', async (req: AuthRequest, res) => {
   if (!lines || !Array.isArray(lines) || lines.length === 0) {
     res.status(400).json({ error: 'lines array required' }); return
   }
-  const valid = lines.filter(l => /^\d{13,19}/.test(l.trim())).map(l => l.trim())
+  // Accept any line that contains a card number (13–19 digits) anywhere
+  const valid = lines.map(l => l.trim()).filter(l => /\d{13,19}/.test(l))
   if (valid.length === 0) { res.status(400).json({ error: 'No valid CC lines found' }); return }
-  await prisma.cardInventory.createMany({ data: valid.map(fullData => ({ productId, fullData })) })
+  await prisma.cardInventory.createMany({
+    data: valid.map(line => ({ productId, fullData: parseCardLine(line) })),
+  })
   const unsold = await prisma.cardInventory.count({ where: { productId, sold: false } })
   await prisma.product.update({ where: { id: productId }, data: { stock: unsold } })
 

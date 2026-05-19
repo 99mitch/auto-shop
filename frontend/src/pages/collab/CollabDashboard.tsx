@@ -127,7 +127,7 @@ function BulkUploadPanel({ productId, onDone }: { productId: number; onDone: () 
   const [result, setResult] = useState<{ added: number; stock: number } | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
-  const validLines = text.split('\n').filter(l => /^\d{13,19}/.test(l.trim()))
+  const validLines = text.split('\n').filter(l => /\d{13,19}/.test(l.trim()))
 
   const upload = useMutation({
     mutationFn: () => api.post(`/api/collab/products/${productId}/inventory/bulk`, {
@@ -145,13 +145,14 @@ function BulkUploadPanel({ productId, onDone }: { productId: number; onDone: () 
   return (
     <div style={{ padding: '10px 14px 12px', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(251,191,36,0.02)' }}>
       <div style={{ ...LABEL_STYLE, color: 'rgba(251,191,36,0.4)', marginBottom: 7 }}>BULK UPLOAD CC</div>
-      <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.2)', marginBottom: 7 }}>
-        Format: 4567890123456789|12/26|123|John Doe|75001|France — une ligne par carte
+      <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.2)', marginBottom: 4, lineHeight: 1.6 }}>
+        Format attendu — une ligne par carte :<br />
+        <span style={{ color: 'rgba(251,191,36,0.5)' }}>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|telephone|ip</span>
       </div>
       <textarea
         value={text}
         onChange={e => { setText(e.target.value); setResult(null) }}
-        placeholder={'4111111111111111|12/26|123|Jean Dupont|75001|France\n5500005555555559|01/27|456|Marie Martin|69001|France'}
+        placeholder={'4973557174338016|06/26|280|Anaelle Auvert|2004-03-29|82 rue du recueil|Villeneuve D\'Ascq|anaelle@icloud.com|0768452742|90.39.5.28\n5500005555555559|01/27|456|Marie Martin|1990-05-14|5 av Victor Hugo|Paris|marie.martin@gmail.com|0612345678|192.168.1.1'}
         style={{
           width: '100%', minHeight: 90, background: 'rgba(255,255,255,0.03)',
           border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
