@@ -1,5 +1,5 @@
 import { prisma } from '../prisma'
-import { deliverCards, notify, notifyOrderStatus } from './notify'
+import { deliverCards, notify, notifyOrderStatus, type CardDelivery } from './notify'
 import { InputFile } from 'grammy'
 import { bot } from '../bot'
 
@@ -44,7 +44,7 @@ export async function fulfillCCOrder(orderId: number): Promise<void> {
     where: { id: orderId },
     include: {
       user: true,
-      items: { include: { product: { select: { collaboratorId: true, name: true, costEur: true } } } },
+      items: { include: { product: { select: { collaboratorId: true, name: true, costEur: true, description: true } } } },
     },
   })
   if (!order) return
@@ -83,7 +83,7 @@ export async function fulfillCCOrder(orderId: number): Promise<void> {
     await prisma.collaboratorEarning.createMany({ data: earningsToCreate })
   }
 
-  const cards: Array<{ productName: string; data: string }> = []
+  const cards: CardDelivery[] = []
   for (const item of order.items) {
     const invItems = await prisma.cardInventory.findMany({
       where: { productId: item.productId, sold: false },
@@ -97,7 +97,21 @@ export async function fulfillCCOrder(orderId: number): Promise<void> {
       })
       const remaining = await prisma.cardInventory.count({ where: { productId: item.productId, sold: false } })
       await prisma.product.update({ where: { id: item.productId }, data: { stock: remaining } })
-      invItems.forEach((inv) => cards.push({ productName: item.product.name, data: inv.fullData }))
+
+      let meta: Record<string, string> = {}
+      try { meta = JSON.parse(item.product.description || '{}') } catch {}
+
+      invItems.forEach((inv) => cards.push({
+        productName: item.product.name,
+        data: inv.fullData,
+        meta: {
+          bin: meta.bin,
+          device: meta.device,
+          ddn: meta.ddn,
+          age: meta.age ? String(meta.age) : undefined,
+          cp: meta.cp,
+        },
+      }))
     }
   }
 
