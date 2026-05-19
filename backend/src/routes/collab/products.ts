@@ -53,6 +53,37 @@ router.post('/', async (req: AuthRequest, res) => {
   res.json({ ...product, images: parseImages(product.images) })
 })
 
+// GET /bot-upload — récupère l'upload bot en attente de confirmation
+router.get('/bot-upload', async (req: AuthRequest, res) => {
+  const pending = getPending(req.userId!)
+  if (!pending) { res.json(null); return }
+  res.json({ productId: pending.productId, count: pending.cards.length, preview: pending.cards.slice(0, 5) })
+})
+
+// POST /bot-upload/confirm — confirme et sauvegarde les cartes en attente
+router.post('/bot-upload/confirm', async (req: AuthRequest, res) => {
+  const pending = getPending(req.userId!)
+  if (!pending) { res.status(404).json({ error: 'Aucun upload en attente' }); return }
+
+  const product = await prisma.product.findFirst({ where: { id: pending.productId, collaboratorId: req.userId! } })
+  if (!product) { res.status(404).json({ error: 'Produit introuvable' }); return }
+
+  await prisma.cardInventory.createMany({
+    data: pending.cards.map(line => ({ productId: pending.productId, fullData: parseCardLine(line) })),
+  })
+  const unsold = await prisma.cardInventory.count({ where: { productId: pending.productId, sold: false } })
+  await prisma.product.update({ where: { id: pending.productId }, data: { stock: unsold } })
+  clearPending(req.userId!)
+  matchAndDeliver(pending.productId).catch(err => console.warn('[matcher]', err))
+  res.json({ added: pending.cards.length, stock: unsold })
+})
+
+// DELETE /bot-upload — annule l'upload bot en attente
+router.delete('/bot-upload', async (req: AuthRequest, res) => {
+  clearPending(req.userId!)
+  res.json({ ok: true })
+})
+
 router.put('/:id', async (req: AuthRequest, res) => {
   const id = parseInt(req.params.id)
 
@@ -182,37 +213,6 @@ router.post('/:id/inventory/bulk', async (req: AuthRequest, res) => {
   matchAndDeliver(productId).catch((err) => console.warn('[matcher] Error:', err))
 
   res.json({ added: valid.length, stock: unsold })
-})
-
-// GET /bot-upload — récupère l'upload bot en attente de confirmation
-router.get('/bot-upload', async (req: AuthRequest, res) => {
-  const pending = getPending(req.userId!)
-  if (!pending) { res.json(null); return }
-  res.json({ productId: pending.productId, count: pending.cards.length, preview: pending.cards.slice(0, 5) })
-})
-
-// POST /bot-upload/confirm — confirme et sauvegarde les cartes en attente
-router.post('/bot-upload/confirm', async (req: AuthRequest, res) => {
-  const pending = getPending(req.userId!)
-  if (!pending) { res.status(404).json({ error: 'Aucun upload en attente' }); return }
-
-  const product = await prisma.product.findFirst({ where: { id: pending.productId, collaboratorId: req.userId! } })
-  if (!product) { res.status(404).json({ error: 'Produit introuvable' }); return }
-
-  await prisma.cardInventory.createMany({
-    data: pending.cards.map(line => ({ productId: pending.productId, fullData: parseCardLine(line) })),
-  })
-  const unsold = await prisma.cardInventory.count({ where: { productId: pending.productId, sold: false } })
-  await prisma.product.update({ where: { id: pending.productId }, data: { stock: unsold } })
-  clearPending(req.userId!)
-  matchAndDeliver(pending.productId).catch(err => console.warn('[matcher]', err))
-  res.json({ added: pending.cards.length, stock: unsold })
-})
-
-// DELETE /bot-upload — annule l'upload bot en attente
-router.delete('/bot-upload', async (req: AuthRequest, res) => {
-  clearPending(req.userId!)
-  res.json({ ok: true })
 })
 
 // POST /:id/inventory/bot-session — démarre une session bot (le bot envoie un message au collab)
