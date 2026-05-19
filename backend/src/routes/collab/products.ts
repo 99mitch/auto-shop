@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { prisma } from '../../prisma'
 import { AuthRequest } from '../../middleware/auth'
 import { matchAndDeliver } from '../../lib/preorderMatcher'
+import { deliverCards } from '../../lib/notify'
 
 const router = Router()
 
@@ -179,6 +180,46 @@ router.post('/:id/inventory/bulk', async (req: AuthRequest, res) => {
   matchAndDeliver(productId).catch((err) => console.warn('[matcher] Error:', err))
 
   res.json({ added: valid.length, stock: unsold })
+})
+
+// POST /:id/inventory/test-delivery — envoie une carte test au Telegram du collab
+router.post('/:id/inventory/test-delivery', async (req: AuthRequest, res) => {
+  const productId = parseInt(req.params.id)
+
+  const [product, user] = await Promise.all([
+    prisma.product.findFirst({ where: { id: productId, collaboratorId: req.userId! } }),
+    prisma.user.findUnique({ where: { id: req.userId! } }),
+  ])
+  if (!product) { res.status(404).json({ error: 'Not found' }); return }
+  if (!user?.telegramId) { res.status(400).json({ error: 'Aucun Telegram lié à ce compte' }); return }
+
+  const sample = await prisma.cardInventory.findFirst({
+    where: { productId, sold: false },
+    orderBy: { id: 'asc' },
+  })
+  if (!sample) { res.status(404).json({ error: 'Aucune carte disponible dans l\'inventaire' }); return }
+
+  let meta: Record<string, string> = {}
+  try { meta = JSON.parse(product.description || '{}') } catch {}
+
+  await deliverCards(user.telegramId, 0, [{
+    productName: product.name,
+    data: sample.fullData,
+    meta: {
+      bin: meta.bin,
+      bank: meta.bank,
+      network: meta.network,
+      level: meta.level,
+      type: meta.type,
+      device: meta.device,
+      source: meta.source,
+      ddn: meta.ddn,
+      age: meta.age ? String(meta.age) : undefined,
+      cp: meta.cp,
+    },
+  }])
+
+  res.json({ ok: true })
 })
 
 export default router

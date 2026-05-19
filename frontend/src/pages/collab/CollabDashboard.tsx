@@ -126,6 +126,7 @@ function BulkUploadPanel({ productId, onDone }: { productId: number; onDone: () 
   const [text, setText] = useState('')
   const [result, setResult] = useState<{ added: number; stock: number } | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [testSent, setTestSent] = useState(false)
 
   const validLines = text.split('\n').filter(l => /\d{13,19}/.test(l.trim()))
 
@@ -140,6 +141,12 @@ function BulkUploadPanel({ productId, onDone }: { productId: number; onDone: () 
       onDone()
     },
     onError: (e: any) => setErr(e?.response?.data?.error ?? 'Erreur upload'),
+  })
+
+  const testDelivery = useMutation({
+    mutationFn: () => api.post(`/api/collab/products/${productId}/inventory/test-delivery`).then(r => r.data),
+    onSuccess: () => { setTestSent(true); setTimeout(() => setTestSent(false), 4000) },
+    onError: (e: any) => setErr(e?.response?.data?.error ?? 'Erreur test envoi'),
   })
 
   return (
@@ -160,24 +167,41 @@ function BulkUploadPanel({ productId, onDone }: { productId: number; onDone: () 
           resize: 'vertical', outline: 'none', boxSizing: 'border-box',
         }}
       />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7, gap: 8 }}>
         <span style={{ fontSize: 9, ...MONO, color: validLines.length > 0 ? 'rgba(74,222,128,0.7)' : 'rgba(255,255,255,0.2)' }}>
           {validLines.length} ligne{validLines.length !== 1 ? 's' : ''} valide{validLines.length !== 1 ? 's' : ''}
         </span>
-        <button
-          onClick={() => upload.mutate()}
-          disabled={upload.isPending || validLines.length === 0}
-          style={{
-            padding: '6px 14px', borderRadius: 7,
-            background: validLines.length > 0 ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${validLines.length > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.07)'}`,
-            color: validLines.length > 0 ? GOLD : 'rgba(255,255,255,0.2)',
-            fontSize: 10, ...BEBAS, letterSpacing: '0.08em',
-            cursor: upload.isPending || validLines.length === 0 ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {upload.isPending ? '...' : 'UPLOAD'}
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => testDelivery.mutate()}
+            disabled={testDelivery.isPending}
+            title="Envoie une carte de l'inventaire sur ton Telegram pour tester le format"
+            style={{
+              padding: '6px 12px', borderRadius: 7,
+              background: testSent ? 'rgba(74,222,128,0.12)' : 'rgba(34,211,238,0.08)',
+              border: `1px solid ${testSent ? 'rgba(74,222,128,0.35)' : 'rgba(34,211,238,0.25)'}`,
+              color: testSent ? SUCCESS : 'rgba(34,211,238,0.8)',
+              fontSize: 10, ...BEBAS, letterSpacing: '0.08em',
+              cursor: testDelivery.isPending ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {testDelivery.isPending ? '...' : testSent ? 'ENVOYÉ ✓' : 'TEST TG'}
+          </button>
+          <button
+            onClick={() => upload.mutate()}
+            disabled={upload.isPending || validLines.length === 0}
+            style={{
+              padding: '6px 14px', borderRadius: 7,
+              background: validLines.length > 0 ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${validLines.length > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.07)'}`,
+              color: validLines.length > 0 ? GOLD : 'rgba(255,255,255,0.2)',
+              fontSize: 10, ...BEBAS, letterSpacing: '0.08em',
+              cursor: upload.isPending || validLines.length === 0 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {upload.isPending ? '...' : 'UPLOAD'}
+          </button>
+        </div>
       </div>
       {result && (
         <div style={{ marginTop: 7, fontSize: 10, ...MONO, color: SUCCESS, padding: '5px 9px', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)', borderRadius: 6 }}>
