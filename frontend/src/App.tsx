@@ -82,6 +82,8 @@ function AppInit() {
   const [splash, setSplash] = useState(() => !sessionStorage.getItem('splashSeen'))
 
   useEffect(() => {
+    WebApp.setHeaderColor('#050505')
+    WebApp.setBackgroundColor('#050505')
     WebApp.ready()
     WebApp.expand()
     init()
