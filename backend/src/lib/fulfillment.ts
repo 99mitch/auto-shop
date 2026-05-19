@@ -106,7 +106,12 @@ export async function fulfillCCOrder(orderId: number): Promise<void> {
         data: inv.fullData,
         meta: {
           bin: meta.bin,
+          bank: meta.bank,
+          network: meta.network,
+          level: meta.level,
+          type: meta.type,
           device: meta.device,
+          source: meta.source,
           ddn: meta.ddn,
           age: meta.age ? String(meta.age) : undefined,
           cp: meta.cp,

