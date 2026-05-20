@@ -486,6 +486,17 @@ export default function CollabDashboard() {
     },
   })
 
+  const [pingResult, setPingResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const pingBot = useMutation({
+    mutationFn: () => api.post('/api/collab/products/bot-ping').then(r => r.data),
+    onSuccess: (data: any) => setPingResult({ ok: true, message: `✅ Message envoyé sur ${data.botUsername} (telegramId: ${data.telegramId}). Vérifie ton Telegram.` }),
+    onError: (e: any) => {
+      const d = e?.response?.data
+      const lines = [d?.error, d?.botUsername ? `Bot : ${d.botUsername}` : null, d?.telegramId ? `telegramId : ${d.telegramId}` : null, d?.hint].filter(Boolean)
+      setPingResult({ ok: false, message: lines.join('\n') || e?.message || 'Erreur inconnue' })
+    },
+  })
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#050505' }}>
@@ -518,6 +529,34 @@ export default function CollabDashboard() {
               <StatCard label="PLATEFORME" value={`€${stats.totalPlatformFee.toFixed(2)}`} dim />
             </div>
           ) : null}
+        </div>
+
+        {/* Diagnostic bot */}
+        <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '12px 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: pingResult ? 10 : 0 }}>
+            <div>
+              <div style={{ ...LABEL_STYLE, marginBottom: 3 }}>DIAGNOSTIC</div>
+              <div style={{ ...MONO, fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Tester si le bot Telegram peut te joindre</div>
+            </div>
+            <button
+              onClick={() => { setPingResult(null); pingBot.mutate() }}
+              disabled={pingBot.isPending}
+              style={{ padding: '8px 14px', borderRadius: 8, background: pingBot.isPending ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.35)', color: GOLD, fontSize: 10, ...BEBAS, letterSpacing: '0.1em', cursor: pingBot.isPending ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
+            >
+              {pingBot.isPending ? '...' : '🏓 PING BOT'}
+            </button>
+          </div>
+          {pingResult && (
+            <div style={{
+              fontSize: 10, ...MONO, lineHeight: 1.6, whiteSpace: 'pre-line',
+              padding: '10px 12px', borderRadius: 8,
+              color: pingResult.ok ? SUCCESS : DANGER,
+              background: pingResult.ok ? 'rgba(74,222,128,0.07)' : 'rgba(239,68,68,0.07)',
+              border: `1px solid ${pingResult.ok ? 'rgba(74,222,128,0.2)' : 'rgba(239,68,68,0.2)'}`,
+            }}>
+              {pingResult.message}
+            </div>
+          )}
         </div>
 
         {/* Mes wallets shortcut */}

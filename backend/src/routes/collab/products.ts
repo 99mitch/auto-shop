@@ -215,6 +215,43 @@ router.post('/:id/inventory/bulk', async (req: AuthRequest, res) => {
   res.json({ added: valid.length, stock: unsold })
 })
 
+// POST /bot-ping — diagnostic : envoie juste un message test au Telegram du collab
+router.post('/bot-ping', async (req: AuthRequest, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.userId! } })
+  console.log(`[bot-ping] userId=${req.userId} telegramId=${user?.telegramId ?? 'null'}`)
+
+  if (!user?.telegramId) {
+    res.status(400).json({ error: 'Aucun Telegram lié à ce compte (user.telegramId est null)' })
+    return
+  }
+
+  const botUsername = bot.botInfo?.username ? `@${bot.botInfo.username}` : '(bot non initialisé)'
+
+  try {
+    const result = await bot.api.sendMessage(
+      user.telegramId,
+      `🏓 <b>Test ping</b>\n\nSi tu vois ce message, le bot peut bien te joindre.\n\n• Bot: ${botUsername}\n• telegramId: <code>${user.telegramId}</code>`,
+      { parse_mode: 'HTML' }
+    )
+    console.log(`[bot-ping] success messageId=${result.message_id}`)
+    res.json({ ok: true, botUsername, telegramId: user.telegramId, messageId: result.message_id })
+  } catch (err: any) {
+    const msg = err?.description ?? err?.message ?? String(err)
+    const code = err?.error_code ?? err?.status ?? 'unknown'
+    console.error(`[bot-ping] FAIL code=${code} msg=${msg}`)
+    res.status(400).json({
+      error: `Échec envoi (${code}) : ${msg}`,
+      botUsername,
+      telegramId: user.telegramId,
+      hint: msg.includes('403') || msg.includes('Forbidden')
+        ? `Tu n'as pas démarré ${botUsername} OU tu l'as bloqué. Envoie /start à ${botUsername} dans Telegram.`
+        : msg.includes('chat not found') || msg.includes('400')
+        ? `Le telegramId ${user.telegramId} est introuvable côté Telegram. Vérifie qu'il correspond à ton compte.`
+        : `Erreur inattendue.`,
+    })
+  }
+})
+
 // POST /:id/inventory/bot-session — démarre une session bot (le bot envoie un message au collab)
 router.post('/:id/inventory/bot-session', async (req: AuthRequest, res) => {
   const productId = parseInt(req.params.id)
