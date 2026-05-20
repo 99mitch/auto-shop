@@ -3,7 +3,7 @@ set -e
 
 APP_DIR="/var/www/auto-shop"
 BACKEND_DIR="$APP_DIR/backend"
-DB_PATH="/var/www/auto-shop-data/prod.db"
+DB_PATH="$BACKEND_DIR/prisma/dev.db"
 
 echo "==> Pulling latest code..."
 cd "$APP_DIR"
@@ -25,7 +25,7 @@ npm install
 echo "==> Building backend..."
 npm run build
 
-echo "==> Running Prisma migrations..."
+echo "==> Running Prisma migrations on runtime DB ($DB_PATH)..."
 DATABASE_URL="file:$DB_PATH" npx prisma migrate deploy
 
 echo "==> Importing donnees CSV files (idempotent)..."
