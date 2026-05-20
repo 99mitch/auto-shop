@@ -151,7 +151,6 @@ function AddNewPage() {
   const queryClient = useQueryClient()
 
   const [mode, setMode] = useState<'file' | 'bot'>('file')
-  const [prix, setPrix] = useState('')
   const [parsed, setParsed] = useState<{ raw: string; meta: ReturnType<typeof clientParseCard> }[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [result, setResult] = useState<{ added: number; stock: number } | null>(null)
@@ -221,9 +220,6 @@ function AddNewPage() {
 
   async function handleConfirmFile() {
     if (!parsed) return
-    if (!prix || isNaN(parseFloat(prix)) || parseFloat(prix) <= 0) {
-      setErr('Saisis ton prix (€) avant de confirmer.'); return
-    }
     setErr(null)
     try {
       const firstCard = parsed[0]?.meta
@@ -233,7 +229,7 @@ function AddNewPage() {
       const product = await createProduct.mutateAsync({
         name: `Carte ${network} (${parsed.length} cartes)`,
         description: JSON.stringify({ bin, network }),
-        costEur: parseFloat(prix),
+        costEur: 0,
         stock: 0,
         imageUrl: bin.length >= 6 ? `https://cardimages.imaginecurve.com/cards/${bin}.png` : '',
         images: [],
@@ -245,15 +241,12 @@ function AddNewPage() {
   }
 
   async function handleActivateBot() {
-    if (!prix || isNaN(parseFloat(prix)) || parseFloat(prix) <= 0) {
-      setErr('Saisis ton prix (€) avant d\'activer le bot.'); return
-    }
     setErr(null)
     try {
       const product = await createProduct.mutateAsync({
         name: 'Carte via Bot',
         description: JSON.stringify({}),
-        costEur: parseFloat(prix),
+        costEur: 0,
         stock: 0,
         imageUrl: '',
         images: [],
@@ -314,23 +307,6 @@ function AddNewPage() {
 
       {/* Body */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 16px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-        {/* Prix */}
-        <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '16px' }}>
-          <div style={{ ...LABEL_STYLE, color: 'rgba(251,191,36,0.5)', marginBottom: 10 }}>MON PRIX PAR CARTE (€)</div>
-          <input
-            style={{ ...INPUT_STYLE, fontSize: 20, padding: '12px 14px', border: `1px solid ${prix && parseFloat(prix) > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.1)'}` }}
-            type="number"
-            value={prix}
-            onChange={e => { setPrix(e.target.value); setErr(null) }}
-            placeholder="15"
-            inputMode="decimal"
-            disabled={isPending || botReady}
-          />
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', ...MONO, marginTop: 6 }}>
-            Tu recevras ce montant à chaque vente de carte.
-          </div>
-        </div>
 
         {/* Choix du mode (seulement si pas encore en session bot) */}
         {!botReady && !parsed && (

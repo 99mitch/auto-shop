@@ -24,13 +24,13 @@ router.get('/', async (req: AuthRequest, res) => {
 router.post('/', async (req: AuthRequest, res) => {
   const { categoryId, name, description, costEur, stock, imageUrl, images } = req.body
 
-  if (!name || costEur == null) {
-    res.status(400).json({ error: 'Missing required fields (name, costEur)' })
+  if (!name) {
+    res.status(400).json({ error: 'Missing required field: name' })
     return
   }
 
-  const cost = parseFloat(costEur)
-  if (!Number.isFinite(cost) || cost <= 0) {
+  const cost = costEur != null ? parseFloat(costEur) : 0
+  if (!Number.isFinite(cost) || cost < 0) {
     res.status(400).json({ error: 'costEur must be a positive number' })
     return
   }
