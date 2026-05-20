@@ -135,6 +135,37 @@ router.get('/:id/inventory', async (req: AuthRequest, res) => {
   res.json({ total, unsold, sold: total - unsold })
 })
 
+// GET /:id/inventory/list — liste toutes les cartes d'un produit (collab)
+router.get('/:id/inventory/list', async (req: AuthRequest, res) => {
+  const productId = parseInt(req.params.id)
+  const product = await prisma.product.findFirst({ where: { id: productId, collaboratorId: req.userId! } })
+  if (!product) { res.status(404).json({ error: 'Not found' }); return }
+  const cards = await prisma.cardInventory.findMany({
+    where: { productId },
+    orderBy: { id: 'desc' },
+    select: { id: true, fullData: true, sold: true, createdAt: true },
+  })
+  res.json(cards)
+})
+
+// DELETE /:productId/inventory/:cardId — supprime une carte non vendue
+router.delete('/:productId/inventory/:cardId', async (req: AuthRequest, res) => {
+  const productId = parseInt(req.params.productId)
+  const cardId = parseInt(req.params.cardId)
+
+  const product = await prisma.product.findFirst({ where: { id: productId, collaboratorId: req.userId! } })
+  if (!product) { res.status(404).json({ error: 'Produit introuvable' }); return }
+
+  const card = await prisma.cardInventory.findFirst({ where: { id: cardId, productId } })
+  if (!card) { res.status(404).json({ error: 'Carte introuvable' }); return }
+  if (card.sold) { res.status(400).json({ error: 'Impossible de supprimer une carte déjà vendue' }); return }
+
+  await prisma.cardInventory.delete({ where: { id: cardId } })
+  const unsold = await prisma.cardInventory.count({ where: { productId, sold: false } })
+  await prisma.product.update({ where: { id: productId }, data: { stock: unsold } })
+  res.json({ ok: true, stock: unsold })
+})
+
 // Parse a raw card line into structured JSON for delivery formatting
 function parseCardLine(raw: string): string {
   const line = raw.trim()

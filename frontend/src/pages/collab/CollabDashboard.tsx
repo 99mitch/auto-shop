@@ -383,9 +383,10 @@ function UploadPanel({ productId, onDone }: { productId: number; onDone: () => v
 
 // ── ProductRow with inventory stats ───────────────────────────────────────────
 function ProductRow({
-  p, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete, deleting,
+  p, onView, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete, deleting,
 }: {
   p: CollabProduct
+  onView: () => void
   onEdit: () => void
   onDelete: () => void
   confirmDelete: boolean
@@ -460,6 +461,7 @@ function ProductRow({
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+            <button onClick={onView} style={{ background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', color: SUCCESS, borderRadius: 7, padding: '5px 9px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>👁 VOIR</button>
             <button onClick={onEdit} style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: GOLD, borderRadius: 7, padding: '5px 9px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>MODIFIER</button>
             <button onClick={onConfirmDelete} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: DANGER, borderRadius: 7, padding: '5px 9px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>SUPPR.</button>
           </div>
@@ -672,6 +674,7 @@ export default function CollabDashboard() {
                   {idx > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', margin: '0 14px' }} />}
                   <ProductRow
                     p={p}
+                    onView={() => navigate(`/collab/inventory/${p.id}`)}
                     onEdit={() => navigate(`/collab/edit/${p.id}`)}
                     onDelete={() => deleteProduct.mutate(p.id)}
                     confirmDelete={confirmDelete === p.id}

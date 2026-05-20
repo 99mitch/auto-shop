@@ -237,6 +237,7 @@ function AddNewPage() {
         imageUrl: bin.length >= 6 ? `https://cardimages.imaginecurve.com/cards/${bin}.png` : '',
         images: [],
       })
+      setCreatedProductId(product.id)
       await uploadBulk.mutateAsync({ productId: product.id, lines: parsed.map(c => c.raw) })
     } catch (e: any) {
       setErr(e?.response?.data?.error ?? 'Erreur lors de la création')
@@ -283,14 +284,24 @@ function AddNewPage() {
           Stock disponible : {result.stock}
         </div>
         <div style={{ ...MONO, fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 1.6 }}>
-          Tu peux compléter les infos du produit<br/>(banque, BIN, niveau…) via MODIFIER.
+          Tu peux voir chaque carte ajoutée<br/>et supprimer celles dont tu ne veux pas.
         </div>
-        <button
-          onClick={() => navigate('/collab')}
-          style={{ marginTop: 8, padding: '12px 32px', borderRadius: 10, background: GOLD, border: 'none', color: '#050505', ...BEBAS, fontSize: 15, letterSpacing: '0.1em', cursor: 'pointer' }}
-        >
-          RETOUR AU TABLEAU DE BORD
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8, width: '100%', maxWidth: 280 }}>
+          {createdProductId && (
+            <button
+              onClick={() => navigate(`/collab/inventory/${createdProductId}`)}
+              style={{ padding: '12px 0', borderRadius: 10, background: GOLD, border: 'none', color: '#050505', ...BEBAS, fontSize: 15, letterSpacing: '0.1em', cursor: 'pointer' }}
+            >
+              👁 VOIR LES CARTES AJOUTÉES
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/collab')}
+            style={{ padding: '10px 0', borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', ...BEBAS, fontSize: 12, letterSpacing: '0.1em', cursor: 'pointer' }}
+          >
+            RETOUR AU TABLEAU DE BORD
+          </button>
+        </div>
         <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;600&display=swap'); * { box-sizing: border-box; }`}</style>
       </div>
     )
