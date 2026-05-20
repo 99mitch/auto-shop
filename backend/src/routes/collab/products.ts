@@ -4,7 +4,7 @@ import { AuthRequest } from '../../middleware/auth'
 import { matchAndDeliver } from '../../lib/preorderMatcher'
 import { deliverCards } from '../../lib/notify'
 import { bot } from '../../bot'
-import { setSession, getPending, clearPending } from '../../lib/collabBotSession'
+import { setSession, clearSession, getPending, clearPending } from '../../lib/collabBotSession'
 
 const router = Router()
 
@@ -227,11 +227,20 @@ router.post('/:id/inventory/bot-session', async (req: AuthRequest, res) => {
 
   setSession(user.telegramId, productId, req.userId!)
 
-  await bot.api.sendMessage(
-    user.telegramId,
-    `🃏 <b>Mode réception activé — ${product.name}</b>\n\nEnvoie tes cartes ici, une par ligne :\n<code>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip</code>\n\n⏱ Session valide 10 minutes.`,
-    { parse_mode: 'HTML' }
-  )
+  try {
+    await bot.api.sendMessage(
+      user.telegramId,
+      `🃏 <b>Mode réception activé</b>\n\nEnvoie tes cartes ici, une par ligne :\n<code>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip</code>\n\n⏱ Session valide 10 minutes.`,
+      { parse_mode: 'HTML' }
+    )
+  } catch (err: any) {
+    clearSession(user.telegramId)
+    const msg = err?.description ?? String(err)
+    const hint = msg.includes('403') || msg.includes('Forbidden')
+      ? 'Tu dois d\'abord envoyer /start au bot Telegram avant de pouvoir recevoir des messages.'
+      : `Impossible d'envoyer le message Telegram : ${msg}`
+    res.status(400).json({ error: hint }); return
+  }
 
   res.json({ ok: true })
 })
