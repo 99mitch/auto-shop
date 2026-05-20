@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { useTelegramBackButton } from '../../hooks/useTelegramBackButton'
+import { CardPreview } from '../../components/CardPreview'
 import type { Category } from 'floramini-types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -151,6 +152,8 @@ function UploadPanel({ productId, onDone }: { productId: number; onDone: () => v
   const [err, setErr] = useState<string | null>(null)
   const [result, setResult] = useState<{ added: number; stock: number } | null>(null)
   const [botReady, setBotReady] = useState(false)
+  const [fileIdx, setFileIdx] = useState(0)
+  const [botIdx, setBotIdx] = useState(0)
 
   // Polling: détecte un upload bot en attente
   const { data: botPending, refetch: refetchPending } = useQuery<{ productId: number; count: number; preview: string[] } | null>({
@@ -243,20 +246,30 @@ function UploadPanel({ productId, onDone }: { productId: number; onDone: () => v
       {/* ── Récap fichier ── */}
       {mode === 'file' && parsed && !result && (
         <div>
-          <div style={{ fontSize: 10, ...MONO, color: SUCCESS, marginBottom: 8 }}>
-            ✅ {parsed.length} carte{parsed.length > 1 ? 's' : ''} détectée{parsed.length > 1 ? 's' : ''}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflowY: 'auto', marginBottom: 10 }}>
-            {parsed.map((c, i) => (
-              <div key={i} style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 7, border: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ fontSize: 10, ...MONO, color: '#fff' }}>{maskPan(c.meta.numero)}</div>
-                <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
-                  {[c.meta.titulaire, c.meta.expiration, c.meta.email].filter(Boolean).join(' · ')}
-                </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
+            <div style={{ fontSize: 10, ...MONO, color: SUCCESS }}>
+              ✅ {parsed.length} carte{parsed.length > 1 ? 's' : ''} détectée{parsed.length > 1 ? 's' : ''}
+            </div>
+            {parsed.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <button
+                  onClick={() => setFileIdx(Math.max(0, fileIdx - 1))}
+                  disabled={fileIdx === 0}
+                  style={{ width: 22, height: 22, borderRadius: 6, border: '1px solid rgba(251,191,36,0.2)', background: 'rgba(251,191,36,0.08)', color: fileIdx === 0 ? 'rgba(255,255,255,0.2)' : GOLD, cursor: fileIdx === 0 ? 'not-allowed' : 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >‹</button>
+                <span style={{ ...MONO, fontSize: 9, color: 'rgba(255,255,255,0.5)', minWidth: 36, textAlign: 'center' }}>
+                  {fileIdx + 1}/{parsed.length}
+                </span>
+                <button
+                  onClick={() => setFileIdx(Math.min(parsed.length - 1, fileIdx + 1))}
+                  disabled={fileIdx === parsed.length - 1}
+                  style={{ width: 22, height: 22, borderRadius: 6, border: '1px solid rgba(251,191,36,0.2)', background: 'rgba(251,191,36,0.08)', color: fileIdx === parsed.length - 1 ? 'rgba(255,255,255,0.2)' : GOLD, cursor: fileIdx === parsed.length - 1 ? 'not-allowed' : 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >›</button>
               </div>
-            ))}
+            )}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <CardPreview raw={parsed[Math.min(fileIdx, parsed.length - 1)].raw} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button
               onClick={() => upload.mutate(parsed.map(c => c.raw))}
               disabled={upload.isPending}
@@ -265,7 +278,7 @@ function UploadPanel({ productId, onDone }: { productId: number; onDone: () => v
               {upload.isPending ? '...' : `✅ CONFIRMER (${parsed.length} cartes)`}
             </button>
             <button
-              onClick={() => setParsed(null)}
+              onClick={() => { setParsed(null); setFileIdx(0) }}
               style={{ padding: '9px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)', fontSize: 11, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}
             >
               ✗ ANNULER
@@ -306,28 +319,35 @@ function UploadPanel({ productId, onDone }: { productId: number; onDone: () => v
       {/* ── Récap bot ── */}
       {mode === 'bot' && pendingCards && !result && (
         <div>
-          <div style={{ fontSize: 10, ...MONO, color: SUCCESS, marginBottom: 8 }}>
-            ✅ {pendingCards.count} carte{pendingCards.count > 1 ? 's' : ''} reçue{pendingCards.count > 1 ? 's' : ''} via Telegram
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 130, overflowY: 'auto', marginBottom: 10 }}>
-            {pendingCards.preview.map((raw, i) => {
-              const m = clientParseCard(raw)
-              return (
-                <div key={i} style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 7, border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ fontSize: 10, ...MONO, color: '#fff' }}>{maskPan(m.numero)}</div>
-                  <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
-                    {[m.titulaire, m.expiration, m.email].filter(Boolean).join(' · ')}
-                  </div>
-                </div>
-              )
-            })}
-            {pendingCards.count > 5 && (
-              <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '4px 0' }}>
-                …et {pendingCards.count - 5} autre{pendingCards.count - 5 > 1 ? 's' : ''}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
+            <div style={{ fontSize: 10, ...MONO, color: SUCCESS }}>
+              ✅ {pendingCards.count} carte{pendingCards.count > 1 ? 's' : ''} reçue{pendingCards.count > 1 ? 's' : ''}
+            </div>
+            {pendingCards.preview.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <button
+                  onClick={() => setBotIdx(Math.max(0, botIdx - 1))}
+                  disabled={botIdx === 0}
+                  style={{ width: 22, height: 22, borderRadius: 6, border: '1px solid rgba(251,191,36,0.2)', background: 'rgba(251,191,36,0.08)', color: botIdx === 0 ? 'rgba(255,255,255,0.2)' : GOLD, cursor: botIdx === 0 ? 'not-allowed' : 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >‹</button>
+                <span style={{ ...MONO, fontSize: 9, color: 'rgba(255,255,255,0.5)', minWidth: 36, textAlign: 'center' }}>
+                  {botIdx + 1}/{pendingCards.preview.length}
+                </span>
+                <button
+                  onClick={() => setBotIdx(Math.min(pendingCards.preview.length - 1, botIdx + 1))}
+                  disabled={botIdx === pendingCards.preview.length - 1}
+                  style={{ width: 22, height: 22, borderRadius: 6, border: '1px solid rgba(251,191,36,0.2)', background: 'rgba(251,191,36,0.08)', color: botIdx === pendingCards.preview.length - 1 ? 'rgba(255,255,255,0.2)' : GOLD, cursor: botIdx === pendingCards.preview.length - 1 ? 'not-allowed' : 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >›</button>
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <CardPreview raw={pendingCards.preview[Math.min(botIdx, pendingCards.preview.length - 1)]} />
+          {pendingCards.count > pendingCards.preview.length && (
+            <div style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 8 }}>
+              …et {pendingCards.count - pendingCards.preview.length} autre{pendingCards.count - pendingCards.preview.length > 1 ? 's' : ''} non affichée{pendingCards.count - pendingCards.preview.length > 1 ? 's' : ''}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button
               onClick={() => confirmBot.mutate()}
               disabled={confirmBot.isPending}
@@ -336,7 +356,7 @@ function UploadPanel({ productId, onDone }: { productId: number; onDone: () => v
               {confirmBot.isPending ? '...' : `✅ CONFIRMER (${pendingCards.count} cartes)`}
             </button>
             <button
-              onClick={() => cancelBot.mutate()}
+              onClick={() => { cancelBot.mutate(); setBotIdx(0) }}
               style={{ padding: '9px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)', fontSize: 11, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}
             >
               ✗ ANNULER
