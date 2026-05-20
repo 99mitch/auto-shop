@@ -176,9 +176,13 @@ function AddNewPage() {
     const reader = new FileReader()
     reader.onload = (ev) => {
       const text = ev.target?.result as string
-      const lines = text.split('\n').map(l => l.trim()).filter(l => l && /\d{13,19}/.test(l))
-      if (lines.length === 0) { setErr('Aucune carte détectée dans le fichier.'); return }
-      setParsed(lines.map(raw => ({ raw, meta: clientParseCard(raw) })))
+      const isTree = /\b(?:Num[ée]ro|Nom\s*Complet|Titulaire|CVV)\s*:/i.test(text)
+      const blocks = isTree
+        ? text.split(/(?=\n?\s*[^\n]*?(?:👤\s*)?Nom\s*Complet\s*:)/i)
+            .map(b => b.trim()).filter(b => b && /\d{13,19}/.test(b))
+        : text.split('\n').map(l => l.trim()).filter(l => l && /\d{13,19}/.test(l))
+      if (blocks.length === 0) { setErr('Aucune carte détectée dans le fichier.'); return }
+      setParsed(blocks.map(raw => ({ raw, meta: clientParseCard(raw) })))
     }
     reader.readAsText(file)
     e.target.value = ''
@@ -362,8 +366,10 @@ function AddNewPage() {
           }}>
             <span style={{ fontSize: 28 }}>📄</span>
             <span style={{ fontSize: 12, ...BEBAS, letterSpacing: '0.1em', color: GOLD }}>CHOISIR UN FICHIER .TXT</span>
-            <span style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>
-              Format : pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip
+            <span style={{ fontSize: 9, ...MONO, color: 'rgba(255,255,255,0.2)', textAlign: 'center', lineHeight: 1.7 }}>
+              Formats acceptés :<br/>
+              · <code>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip|cp|ua</code><br/>
+              · arborescence (collé depuis un autre bot)
             </span>
             <input type="file" accept=".txt,text/plain" onChange={handleFile} style={{ display: 'none' }} />
           </label>

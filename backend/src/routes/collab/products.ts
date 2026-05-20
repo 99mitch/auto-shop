@@ -5,6 +5,7 @@ import { matchAndDeliver } from '../../lib/preorderMatcher'
 import { deliverCards } from '../../lib/notify'
 import { bot } from '../../bot'
 import { setSession, clearSession, getPending, clearPending } from '../../lib/collabBotSession'
+import { lookupBin } from '../../lib/binLookup'
 
 const router = Router()
 
@@ -166,7 +167,59 @@ router.delete('/:productId/inventory/:cardId', async (req: AuthRequest, res) => 
   res.json({ ok: true, stock: unsold })
 })
 
-// Parse a raw card line into structured JSON for delivery formatting
+// Labels du format arborescence (┣ ┗) reconnus en entrée
+const LABEL_PATTERNS: Array<[RegExp, string]> = [
+  [/nom\s*complet/i, 'nom'],
+  [/titulaire/i, 'titulaire'],
+  [/date\s*de\s*naissance|naissance|ddn/i, 'ddn'],
+  [/code\s*postal|^cp$/i, 'cp'],
+  [/ville/i, 'ville'],
+  [/adresse/i, 'adresse'],
+  [/e[\- ]?mail/i, 'email'],
+  [/t[ée]l[ée]phone|^tel$|^phone$/i, 'telephone'],
+  [/num[ée]ro|^pan$/i, 'numero'],
+  [/expiration|^exp$|expir/i, 'expiration'],
+  [/cvv|cvc/i, 'cvv'],
+  [/^bin$/i, 'bin'],
+  [/banque|^bank$/i, 'bank'],
+  [/niveau|^level$/i, 'level'],
+  [/^type$/i, 'type'],
+  [/scan/i, 'scan'],
+  [/^ip$/i, 'ip'],
+  [/user[\- ]?agent|^ua$/i, 'ua'],
+]
+
+function mapLabel(label: string): string | null {
+  const cleaned = label.replace(/[^a-zA-ZÀ-ſ\s\-]/g, '').trim()
+  for (const [re, key] of LABEL_PATTERNS) {
+    if (re.test(cleaned)) return key
+  }
+  return null
+}
+
+// Parse a "tree" formatted block (multi-line with ┣/┗ and labels)
+function parseTreeBlock(block: string): Record<string, string> {
+  const result: Record<string, string> = {}
+  for (const rawLine of block.split(/\r?\n/)) {
+    // Strip arbo chars and emojis at the start
+    const line = rawLine.replace(/^[\s┣┗┃│├└─•▪▫◦●○\-]+/, '').trim()
+    if (!line) continue
+    const colonIdx = line.indexOf(':')
+    if (colonIdx < 0) continue
+    const labelRaw = line.slice(0, colonIdx)
+    const value = line.slice(colonIdx + 1).trim()
+    if (!value) continue
+    const key = mapLabel(labelRaw)
+    if (!key) continue
+    // nom/titulaire alias both ways
+    if (key === 'nom' && !result.titulaire) result.titulaire = value
+    if (key === 'titulaire' && !result.nom) result.nom = value
+    result[key] = value
+  }
+  return result
+}
+
+// Parse a raw card line/block into structured JSON for delivery formatting
 function parseCardLine(raw: string): string {
   const line = raw.trim()
   if (!line) return line
@@ -177,24 +230,34 @@ function parseCardLine(raw: string): string {
     if (typeof j === 'object' && j !== null && (j.numero || j.pan)) return line
   } catch {}
 
-  const result: Record<string, string> = {}
+  let result: Record<string, string> = {}
 
-  // Pipe-separated: pan|expiry|cvv|titulaire|ddn|adresse|ville|email|telephone|ip
-  const parts = line.split('|').map(p => p.trim())
-  if (parts.length >= 3) {
-    if (/^\d{13,19}$/.test(parts[0])) result.numero = parts[0]
-    if (/^\d{2}\/\d{2,4}$/.test(parts[1])) result.expiration = parts[1]
-    if (/^\d{3,4}$/.test(parts[2])) result.cvv = parts[2]
-    if (parts[3]) { result.titulaire = parts[3]; result.nom = parts[3] }
-    if (parts[4]) result.ddn = parts[4]
-    if (parts[5]) result.adresse = parts[5]
-    if (parts[6]) result.ville = parts[6]
-    if (parts[7] && parts[7].includes('@')) result.email = parts[7]
-    else if (parts[7]) result.telephone = parts[7]
-    if (parts[8] && parts[8].includes('@')) result.email = parts[8]
-    else if (parts[8]) result.telephone = parts[8]
-    if (parts[9]) result.ip = parts[9]
-    if (parts[10]) result.ip = parts[10]
+  // Format arborescence (multi-lignes avec libellés "X: valeur")
+  const looksLikeTree = /\b(?:Num[ée]ro|Nom\s*Complet|Titulaire|CVV)\s*:/i.test(line)
+  if (looksLikeTree) {
+    result = parseTreeBlock(line)
+  }
+
+  // Format pipe : pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip[|cp|ua]
+  if (!result.numero) {
+    const firstLine = line.split(/\r?\n/)[0]
+    const parts = firstLine.split('|').map(p => p.trim())
+    if (parts.length >= 3) {
+      if (/^\d{13,19}$/.test(parts[0])) result.numero = parts[0]
+      if (/^\d{2}\/\d{2,4}$/.test(parts[1])) result.expiration = parts[1]
+      if (/^\d{3,4}$/.test(parts[2])) result.cvv = parts[2]
+      if (parts[3]) { result.titulaire = parts[3]; result.nom = parts[3] }
+      if (parts[4]) result.ddn = parts[4]
+      if (parts[5]) result.adresse = parts[5]
+      if (parts[6]) result.ville = parts[6]
+      if (parts[7] && parts[7].includes('@')) result.email = parts[7]
+      else if (parts[7]) result.telephone = parts[7]
+      if (parts[8] && parts[8].includes('@')) result.email = parts[8]
+      else if (parts[8]) result.telephone = parts[8]
+      if (parts[9]) result.ip = parts[9]
+      if (parts[10]) result.cp = parts[10]
+      if (parts[11]) result.ua = parts[11]
+    }
   }
 
   // Regex auto-detection to fill missing fields
@@ -213,6 +276,27 @@ function parseCardLine(raw: string): string {
   if (!result.numero) {
     const m = line.match(/\b\d{13,19}\b/)
     if (m) result.numero = m[0]
+  }
+  if (!result.cp) {
+    const m = line.match(/\b(\d{5})\b/)
+    if (m && (!result.numero || m[0] !== result.numero.slice(0, 5))) result.cp = m[1]
+  }
+
+  // Sync nom/titulaire
+  if (result.titulaire && !result.nom) result.nom = result.titulaire
+  if (result.nom && !result.titulaire) result.titulaire = result.nom
+
+  // Auto-dérive BIN, banque, niveau, type, scan à partir du numéro
+  if (result.numero) {
+    const info = lookupBin(result.numero)
+    if (info) {
+      if (!result.bin) result.bin = info.bin
+      if (!result.bank && info.bank) result.bank = info.bank
+      if (!result.level && info.level) result.level = info.level
+      if (!result.type && info.type) result.type = info.type
+      if (!result.network) result.network = info.network
+      if (!result.scan) result.scan = info.scanUrl
+    }
   }
 
   // Return JSON if we extracted at least the card number
@@ -308,7 +392,7 @@ router.post('/:id/inventory/bot-session', async (req: AuthRequest, res) => {
   try {
     await bot.api.sendMessage(
       user.telegramId,
-      `🃏 <b>Mode réception activé</b>\n\nEnvoie tes cartes ici, une par ligne :\n<code>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip</code>\n\n⏱ Session valide 10 minutes.`,
+      `🃏 <b>Mode réception activé</b>\n\nDeux formats acceptés :\n\n<b>1. Format pipe</b> (une carte par ligne) :\n<code>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip|cp|ua</code>\n\n<b>2. Format arborescence</b> (collé depuis un autre bot) :\n<code>👤 Nom Complet: …\n🎂 Date de Naissance: …\n💳 Numéro: …\n…</code>\n\n⏱ Session valide 10 minutes.`,
       { parse_mode: 'HTML' }
     )
     console.log(`[bot-session] message envoyé à telegramId=${user.telegramId}`)

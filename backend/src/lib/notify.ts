@@ -22,6 +22,7 @@ export interface CardDelivery {
     ddn?: string
     age?: string
     cp?: string
+    ua?: string
   }
 }
 
@@ -61,10 +62,11 @@ function formatCardBlock(c: CardDelivery, idx: number): string {
   // Billing
   if (isJson) {
     const billing = section('🥽 <b>Billing</b>', [
-      ['👤 Nom Complet', d.nom],
+      ['👤 Nom Complet', d.nom ?? d.titulaire],
       ['🎂 Date de Naissance', d.ddn ?? m.ddn],
       ['🏙️ Ville', d.ville],
-      ['🏠 Adresse', d.adresse],
+      ['🏙️ Adresse', d.adresse],
+      ['🏙️ Code Postal', d.cp ?? m.cp],
       ['📧 Email', d.email],
       ['📞 Téléphone', d.telephone],
     ])
@@ -72,7 +74,7 @@ function formatCardBlock(c: CardDelivery, idx: number): string {
 
     // Carte
     const carte = section('💳 <b>Carte</b>', [
-      ['🧾 Titulaire', d.titulaire],
+      ['🧾 Titulaire', d.titulaire ?? d.nom],
       ['💳 Numéro', d.numero],
       ['🕑 Expiration', d.expiration],
       ['🔒 CVV', d.cvv],
@@ -83,27 +85,33 @@ function formatCardBlock(c: CardDelivery, idx: number): string {
     parts.push(`💳 <b>Données</b>\n<code>${escHtml(c.data)}</code>`)
   }
 
-  // Infos carte
-  const bin6 = m.bin?.slice(0, 6) ?? ''
-  const niveau = [m.network, m.level].filter(Boolean).join(' ')
-  const scanUrl = bin6 ? `cardimages.imaginecurve.com/cards/${bin6}.png` : undefined
+  // Infos carte — données par-carte > meta produit
+  const bin = d.bin ?? m.bin
+  const bank = d.bank ?? m.bank
+  const type = d.type ?? m.type
+  const network = d.network ?? m.network
+  const level = d.level ?? m.level
+  const niveau = [network, level].filter(Boolean).join(' ')
+  const scanRaw = d.scan ?? (bin ? `cardimages.imaginecurve.com/cards/${bin.slice(0, 6)}.png` : undefined)
+  const scanHref = scanRaw ? (scanRaw.startsWith('http') ? scanRaw : `https://${scanRaw}`) : undefined
   const infos = section('🏦 <b>Infos carte</b>', [
-    ['🟪 Bin', m.bin],
-    ['🏦 Banque', m.bank],
+    ['🟪 Bin', bin],
+    ['🏦 Banque', bank],
     ['🏷️ Niveau', niveau || undefined],
-    ['⚙️ Type', m.type],
-    ['💠 Scan', scanUrl ? `<a href="https://${scanUrl}">${scanUrl}</a>` : undefined],
+    ['⚙️ Type', type],
+    ['💠 Scan', scanHref ? `<a href="${scanHref}">${scanRaw}</a>` : undefined],
   ])
   if (infos) parts.push(infos)
 
-  // Appareil
-  const deviceLabel = m.device === 'IPHONE' ? '🍎 iPhone'
-    : m.device === 'ANDROID' ? '🤖 Android'
-    : m.device === 'UNKNOWN' ? '❓ Inconnu'
+  // Appareil — USER-AGENT par carte > device produit (fallback)
+  const deviceFallback = m.device === 'IPHONE' ? 'iPhone'
+    : m.device === 'ANDROID' ? 'Android'
+    : m.device === 'UNKNOWN' ? 'Inconnu'
     : undefined
+  const userAgent = (isJson ? d.ua : undefined) ?? m.ua ?? deviceFallback
   const appareil = section('💻 <b>Appareil</b>', [
     ['🌐 IP', isJson ? d.ip : undefined],
-    ['🌟 Device', deviceLabel],
+    ['🌟 USER-AGENT', userAgent],
   ])
   if (appareil) parts.push(appareil)
 

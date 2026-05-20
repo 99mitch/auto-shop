@@ -11,9 +11,18 @@ export interface ParsedCard {
   ddn?: string
   adresse?: string
   ville?: string
+  cp?: string
   email?: string
   telephone?: string
   ip?: string
+  ua?: string
+  // Auto-dérivés depuis le BIN
+  bin?: string
+  bank?: string
+  level?: string
+  type?: string
+  network?: string
+  scan?: string
 }
 
 export interface ProductMeta {
@@ -42,15 +51,100 @@ const SOURCE_LABEL: Record<string, string> = {
   OTHER: 'Autre',
 }
 
+// Lookup BIN minimal (miroir de backend/src/lib/binLookup.ts).
+// Étendre au besoin.
+const FRONT_BIN_TABLE: Record<string, { bank?: string; level?: string; type?: string }> = {
+  '412521': { bank: 'BPCE', level: 'PLATINUM', type: 'CREDIT' },
+}
+
+function detectNetworkFront(bin: string): string {
+  const b = bin.replace(/\D/g, '')
+  if (!b) return 'OTHER'
+  const c0 = b[0]
+  const c2 = b.slice(0, 2)
+  const c4 = b.slice(0, 4)
+  if (c0 === '4') return 'VISA'
+  if (c0 === '5' && c2 >= '51' && c2 <= '55') return 'MASTERCARD'
+  if (c4 >= '2221' && c4 <= '2720') return 'MASTERCARD'
+  if (c2 === '34' || c2 === '37') return 'AMEX'
+  if (c0 === '6') return 'DISCOVER'
+  return 'OTHER'
+}
+
+const LABEL_PATTERNS_FRONT: Array<[RegExp, keyof ParsedCard]> = [
+  [/nom\s*complet/i, 'nom'],
+  [/titulaire/i, 'titulaire'],
+  [/date\s*de\s*naissance|naissance|ddn/i, 'ddn'],
+  [/code\s*postal|^cp$/i, 'cp'],
+  [/ville/i, 'ville'],
+  [/adresse/i, 'adresse'],
+  [/e[\- ]?mail/i, 'email'],
+  [/t[ée]l[ée]phone|^tel$|^phone$/i, 'telephone'],
+  [/num[ée]ro|^pan$/i, 'numero'],
+  [/expiration|^exp$|expir/i, 'expiration'],
+  [/cvv|cvc/i, 'cvv'],
+  [/^bin$/i, 'bin'],
+  [/banque|^bank$/i, 'bank'],
+  [/niveau|^level$/i, 'level'],
+  [/^type$/i, 'type'],
+  [/scan/i, 'scan'],
+  [/^ip$/i, 'ip'],
+  [/user[\- ]?agent|^ua$/i, 'ua'],
+]
+
+function mapLabelFront(label: string): keyof ParsedCard | null {
+  const cleaned = label.replace(/[^a-zA-ZÀ-ſ\s\-]/g, '').trim()
+  for (const [re, key] of LABEL_PATTERNS_FRONT) {
+    if (re.test(cleaned)) return key
+  }
+  return null
+}
+
+function parseTreeBlockFront(block: string): ParsedCard {
+  const result: ParsedCard = {}
+  for (const rawLine of block.split(/\r?\n/)) {
+    const line = rawLine.replace(/^[\s┣┗┃│├└─•▪▫◦●○\-]+/, '').trim()
+    if (!line) continue
+    const colonIdx = line.indexOf(':')
+    if (colonIdx < 0) continue
+    const labelRaw = line.slice(0, colonIdx)
+    const value = line.slice(colonIdx + 1).trim()
+    if (!value) continue
+    const key = mapLabelFront(labelRaw)
+    if (!key) continue
+    ;(result as any)[key] = value
+  }
+  if (result.nom && !result.titulaire) result.titulaire = result.nom
+  if (result.titulaire && !result.nom) result.nom = result.titulaire
+  return result
+}
+
+function autoDeriveBin(card: ParsedCard): ParsedCard {
+  if (!card.numero) return card
+  const pan = card.numero.replace(/\D/g, '')
+  if (pan.length < 6) return card
+  const bin = pan.slice(0, 6)
+  const entry = FRONT_BIN_TABLE[bin]
+  return {
+    ...card,
+    bin: card.bin ?? bin,
+    network: card.network ?? detectNetworkFront(bin),
+    bank: card.bank ?? entry?.bank,
+    level: card.level ?? entry?.level,
+    type: card.type ?? entry?.type,
+    scan: card.scan ?? `cardimages.imaginecurve.com/cards/${bin}.png`,
+  }
+}
+
 export function parseCardFull(raw: string): ParsedCard {
   const line = raw.trim()
-  const result: ParsedCard = {}
+  let result: ParsedCard = {}
 
   // Déjà du JSON ?
   try {
     const j = JSON.parse(line)
     if (j && typeof j === 'object' && (j.numero || j.pan)) {
-      return {
+      result = {
         numero: j.numero ?? j.pan,
         expiration: j.expiration ?? j.exp,
         cvv: j.cvv,
@@ -59,33 +153,52 @@ export function parseCardFull(raw: string): ParsedCard {
         ddn: j.ddn,
         adresse: j.adresse,
         ville: j.ville,
+        cp: j.cp,
         email: j.email,
         telephone: j.telephone ?? j.tel,
         ip: j.ip,
+        ua: j.ua,
+        bin: j.bin,
+        bank: j.bank,
+        level: j.level,
+        type: j.type,
+        network: j.network,
+        scan: j.scan,
       }
+      return autoDeriveBin(result)
     }
   } catch {}
 
-  // Format pipe : pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip
-  const parts = line.split('|').map(p => p.trim())
-  if (parts.length >= 3) {
-    if (/^\d{13,19}$/.test(parts[0])) result.numero = parts[0]
-    if (/^\d{2}\/\d{2,4}$/.test(parts[1])) result.expiration = parts[1]
-    if (/^\d{3,4}$/.test(parts[2])) result.cvv = parts[2]
-    if (parts[3]) { result.titulaire = parts[3]; result.nom = parts[3] }
-    if (parts[4]) result.ddn = parts[4]
-    if (parts[5]) result.adresse = parts[5]
-    if (parts[6]) result.ville = parts[6]
-    if (parts[7]) {
-      if (parts[7].includes('@')) result.email = parts[7]
-      else result.telephone = parts[7]
+  // Format arborescence ?
+  const looksLikeTree = /\b(?:Num[ée]ro|Nom\s*Complet|Titulaire|CVV)\s*:/i.test(line)
+  if (looksLikeTree) {
+    result = parseTreeBlockFront(line)
+  }
+
+  // Format pipe : pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip[|cp|ua]
+  if (!result.numero) {
+    const firstLine = line.split(/\r?\n/)[0]
+    const parts = firstLine.split('|').map(p => p.trim())
+    if (parts.length >= 3) {
+      if (/^\d{13,19}$/.test(parts[0])) result.numero = parts[0]
+      if (/^\d{2}\/\d{2,4}$/.test(parts[1])) result.expiration = parts[1]
+      if (/^\d{3,4}$/.test(parts[2])) result.cvv = parts[2]
+      if (parts[3]) { result.titulaire = parts[3]; result.nom = parts[3] }
+      if (parts[4]) result.ddn = parts[4]
+      if (parts[5]) result.adresse = parts[5]
+      if (parts[6]) result.ville = parts[6]
+      if (parts[7]) {
+        if (parts[7].includes('@')) result.email = parts[7]
+        else result.telephone = parts[7]
+      }
+      if (parts[8]) {
+        if (parts[8].includes('@')) result.email = parts[8]
+        else if (!result.telephone) result.telephone = parts[8]
+      }
+      if (parts[9]) result.ip = parts[9]
+      if (parts[10]) result.cp = parts[10]
+      if (parts[11]) result.ua = parts[11]
     }
-    if (parts[8]) {
-      if (parts[8].includes('@')) result.email = parts[8]
-      else if (!result.telephone) result.telephone = parts[8]
-    }
-    if (parts[9]) result.ip = parts[9]
-    if (parts[10] && !result.ip) result.ip = parts[10]
   }
 
   // Fallbacks regex
@@ -101,7 +214,12 @@ export function parseCardFull(raw: string): ParsedCard {
   if (!result.expiration) {
     const m = line.match(/\b\d{2}\/\d{2,4}\b/); if (m) result.expiration = m[0]
   }
-  return result
+
+  // Sync nom/titulaire
+  if (result.titulaire && !result.nom) result.nom = result.titulaire
+  if (result.nom && !result.titulaire) result.titulaire = result.nom
+
+  return autoDeriveBin(result)
 }
 
 export function parseProductMeta(description: string | undefined): ProductMeta {
@@ -224,10 +342,20 @@ function Section({ title, color, rows }: { title: string; color: string; rows: A
 // ── Format livraison (reproduit le message Telegram envoyé au client) ─────────
 export function CardDeliveryView({ card, meta, productName }: { card: ParsedCard; meta?: ProductMeta; productName?: string }) {
   const m = meta ?? {}
-  const bin6 = m.bin ? m.bin.slice(0, 6) : (card.numero ? card.numero.slice(0, 6) : '')
-  const niveau = [m.network, m.level].filter(Boolean).join(' ')
-  const deviceLabel = m.device === 'IPHONE' ? '🍎 iPhone' : m.device === 'ANDROID' ? '🤖 Android' : m.device === 'UNKNOWN' ? '❓ Inconnu' : undefined
-  const scanUrl = bin6 ? `https://cardimages.imaginecurve.com/cards/${bin6}.png` : undefined
+  // Données par carte > meta produit (fallback)
+  const bin = card.bin ?? (m.bin ? m.bin.slice(0, 6) : (card.numero ? card.numero.slice(0, 6) : ''))
+  const network = card.network ?? m.network
+  const level = card.level ?? m.level
+  const niveau = [network, level].filter(Boolean).join(' ')
+  const scanUrl = card.scan
+    ? (card.scan.startsWith('http') ? card.scan : `https://${card.scan}`)
+    : (bin ? `https://cardimages.imaginecurve.com/cards/${bin}.png` : undefined)
+  // USER-AGENT par carte ; fallback sur le device-label du produit
+  const deviceFallback = m.device === 'IPHONE' ? 'iPhone'
+    : m.device === 'ANDROID' ? 'Android'
+    : m.device === 'UNKNOWN' ? 'Inconnu'
+    : undefined
+  const userAgent = card.ua ?? deviceFallback
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -238,10 +366,11 @@ export function CardDeliveryView({ card, meta, productName }: { card: ParsedCard
       )}
 
       <Section title="🥽 BILLING" color="#a78bfa" rows={[
-        ['👤 Nom complet', card.nom ?? card.titulaire],
-        ['🎂 Date naissance', card.ddn ?? m.ddn],
-        ['🏙 Ville', card.ville],
-        ['🏠 Adresse', card.adresse],
+        ['👤 Nom Complet', card.nom ?? card.titulaire],
+        ['🎂 Date de Naissance', card.ddn ?? m.ddn],
+        ['🏙️ Ville', card.ville],
+        ['🏙️ Adresse', card.adresse],
+        ['🏙️ Code Postal', card.cp ?? m.cp],
         ['📧 Email', card.email],
         ['📞 Téléphone', card.telephone],
       ]} />
@@ -254,21 +383,21 @@ export function CardDeliveryView({ card, meta, productName }: { card: ParsedCard
       ]} />
 
       <Section title="🏦 INFOS CARTE" color="#22d3ee" rows={[
-        ['🟪 BIN', m.bin],
-        ['🏦 Banque', m.bank],
-        ['🏷 Niveau', niveau || undefined],
-        ['⚙ Type', m.type],
+        ['🟪 Bin', card.bin ?? m.bin],
+        ['🏦 Banque', card.bank ?? m.bank],
+        ['🏷️ Niveau', niveau || undefined],
+        ['⚙️ Type', card.type ?? m.type],
         ['💠 Scan', scanUrl],
       ]} />
 
       <Section title="💻 APPAREIL" color="#fb923c" rows={[
         ['🌐 IP', card.ip],
-        ['🌟 Device', deviceLabel],
+        ['🌟 USER-AGENT', userAgent],
       ]} />
 
       {m.source && (
         <Section title="🎨 SYSTEM" color="#f472b6" rows={[
-          ['🏷 Source', SOURCE_LABEL[m.source] ?? m.source],
+          ['🏷️ Source', SOURCE_LABEL[m.source] ?? m.source],
         ]} />
       )}
 
