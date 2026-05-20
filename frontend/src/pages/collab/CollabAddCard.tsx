@@ -229,7 +229,7 @@ function AddNewPage() {
       const product = await createProduct.mutateAsync({
         name: `Carte ${network} (${parsed.length} cartes)`,
         description: JSON.stringify({ bin, network }),
-        costEur: 0,
+        costEur: 0.01,
         stock: 0,
         imageUrl: bin.length >= 6 ? `https://cardimages.imaginecurve.com/cards/${bin}.png` : '',
         images: [],
@@ -246,7 +246,7 @@ function AddNewPage() {
       const product = await createProduct.mutateAsync({
         name: 'Carte via Bot',
         description: JSON.stringify({}),
-        costEur: 0,
+        costEur: 0.01,
         stock: 0,
         imageUrl: '',
         images: [],
@@ -305,8 +305,15 @@ function AddNewPage() {
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: GOLD, boxShadow: `0 0 6px ${GOLD}` }} />
       </div>
 
+      {/* Erreur toujours visible sous le header */}
+      {err && (
+        <div style={{ flexShrink: 0, margin: '0 16px', marginTop: 10, fontSize: 11, fontFamily: '"JetBrains Mono", monospace', color: DANGER, padding: '10px 14px', background: 'rgba(239,68,68,0.09)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10, lineHeight: 1.6 }}>
+          ⚠️ {err}
+        </div>
+      )}
+
       {/* Body */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 16px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 16px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Choix du mode (seulement si pas encore en session bot) */}
         {!botReady && !parsed && (
@@ -459,11 +466,6 @@ function AddNewPage() {
           </div>
         )}
 
-        {err && (
-          <div style={{ fontSize: 10, ...MONO, color: DANGER, padding: '8px 12px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8 }}>
-            {err}
-          </div>
-        )}
       </div>
 
       <style>{`
