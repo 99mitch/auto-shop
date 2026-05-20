@@ -2,13 +2,19 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
-import { CardVisual, CardMetaList, parseCardFull } from '../../components/CardPreview'
+import { CardVisual, CardDeliveryView, parseCardFull, parseProductMeta } from '../../components/CardPreview'
 
 interface CardItem {
   id: number
   fullData: string
   sold: boolean
   createdAt: string
+}
+
+interface CollabProduct {
+  id: number
+  name: string
+  description: string
 }
 
 const GOLD = '#fbbf24'
@@ -35,6 +41,13 @@ export default function CollabInventory() {
     queryFn: () => api.get(`/api/collab/products/${productId}/inventory/list`).then(r => r.data),
     enabled: productId != null,
   })
+
+  const { data: products = [] } = useQuery<CollabProduct[]>({
+    queryKey: ['collab-products'],
+    queryFn: () => api.get('/api/collab/products').then(r => r.data),
+  })
+  const product = products.find(p => p.id === productId)
+  const productMeta = parseProductMeta(product?.description)
 
   const deleteCard = useMutation({
     mutationFn: (cardId: number) => api.delete(`/api/collab/products/${productId}/inventory/${cardId}`).then(r => r.data),
@@ -134,7 +147,7 @@ export default function CollabInventory() {
                 </div>
 
                 <CardVisual card={parsed} />
-                <CardMetaList card={parsed} />
+                <CardDeliveryView card={parsed} meta={productMeta} productName={product?.name} />
               </div>
             )
           })
