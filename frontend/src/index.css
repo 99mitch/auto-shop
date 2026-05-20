@@ -6,6 +6,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html, body, #root {
+  height: var(--tg-viewport, 100vh);
+  /* Empêche le bounce iOS/Telegram qui bloque le scroll interne */
+  overscroll-behavior: contain;
+}
+
 body {
   margin: 0;
   padding: 0;

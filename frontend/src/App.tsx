@@ -88,7 +88,27 @@ function AppInit() {
     WebApp.setBackgroundColor('#050505')
     WebApp.ready()
     WebApp.expand()
+
+    // Empêche le swipe vertical qui ferme/réduit la mini app et bloque le scroll
+    // (Bot API 7.7+ — guard pour ne pas péter sur les vieux clients)
+    try { (WebApp as any).disableVerticalSwipes?.() } catch {}
+
+    // Synchronise la hauteur réelle du viewport Telegram avec une variable CSS
+    // utilisée par les conteneurs full-height (--tg-viewport)
+    const applyViewport = () => {
+      const h = (WebApp as any).viewportStableHeight || (WebApp as any).viewportHeight || window.innerHeight
+      document.documentElement.style.setProperty('--tg-viewport', `${h}px`)
+    }
+    applyViewport()
+    try { (WebApp as any).onEvent?.('viewportChanged', applyViewport) } catch {}
+    window.addEventListener('resize', applyViewport)
+
     init()
+
+    return () => {
+      try { (WebApp as any).offEvent?.('viewportChanged', applyViewport) } catch {}
+      window.removeEventListener('resize', applyViewport)
+    }
   }, [])
 
   if (splash) {

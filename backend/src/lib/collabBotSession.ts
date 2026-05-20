@@ -45,6 +45,26 @@ export function setPending(collabId: number, productId: number, cards: string[])
   })
 }
 
+// Append cards to an existing pending upload, or create one if none exists.
+// Returns the new cumulative total of cards waiting.
+export function appendPending(collabId: number, productId: number, cards: string[]): number {
+  const existing = pendingUploads.get(collabId)
+  if (existing && existing.productId === productId && existing.expiresAt >= new Date()) {
+    existing.cards.push(...cards)
+    existing.expiresAt = new Date(Date.now() + 30 * 60 * 1000)
+    return existing.cards.length
+  }
+  setPending(collabId, productId, cards)
+  return cards.length
+}
+
+// Renew the session expiry without changing the rest.
+export function touchSession(telegramId: string) {
+  const s = activeSessions.get(telegramId)
+  if (!s) return
+  s.expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+}
+
 export function getPending(collabId: number): PendingUpload | null {
   const p = pendingUploads.get(collabId)
   if (!p) return null

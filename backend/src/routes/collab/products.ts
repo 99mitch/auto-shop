@@ -75,6 +75,9 @@ router.post('/bot-upload/confirm', async (req: AuthRequest, res) => {
   const unsold = await prisma.cardInventory.count({ where: { productId: pending.productId, sold: false } })
   await prisma.product.update({ where: { id: pending.productId }, data: { stock: unsold } })
   clearPending(req.userId!)
+  // Coupe la session bot pour ne plus accepter d'envois après confirmation
+  const user = await prisma.user.findUnique({ where: { id: req.userId! } })
+  if (user?.telegramId) clearSession(user.telegramId)
   matchAndDeliver(pending.productId).catch(err => console.warn('[matcher]', err))
   res.json({ added: pending.cards.length, stock: unsold })
 })
@@ -82,6 +85,8 @@ router.post('/bot-upload/confirm', async (req: AuthRequest, res) => {
 // DELETE /bot-upload — annule l'upload bot en attente
 router.delete('/bot-upload', async (req: AuthRequest, res) => {
   clearPending(req.userId!)
+  const user = await prisma.user.findUnique({ where: { id: req.userId! } })
+  if (user?.telegramId) clearSession(user.telegramId)
   res.json({ ok: true })
 })
 

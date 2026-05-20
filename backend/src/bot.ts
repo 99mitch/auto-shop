@@ -1,5 +1,5 @@
 import { Bot, InlineKeyboard } from 'grammy'
-import { getSession, clearSession, setPending } from './lib/collabBotSession'
+import { getSession, appendPending, touchSession, getPending } from './lib/collabBotSession'
 
 const BOT_TOKEN = process.env.BOT_TOKEN
 if (!BOT_TOKEN) throw new Error('BOT_TOKEN environment variable is required')
@@ -44,12 +44,14 @@ bot.on('message:text', async (ctx) => {
 
   let lines: string[]
   if (isTreeFormat) {
-    // Format arborescence : un message = une carte (multi-lignes).
-    // Découpe sur les marqueurs "Nom Complet:" pour gérer plusieurs cartes collées d'affilée.
+    // Format arborescence : chaque MESSAGE = 1 carte par défaut.
+    // Si l'utilisateur a collé plusieurs blocs dans un seul message, on découpe
+    // sur les marqueurs "Nom Complet:" pour les séparer.
     const blocks = text.split(/(?=\n?\s*[^\n]*?(?:👤\s*)?Nom\s*Complet\s*:)/i)
       .map(b => b.trim())
       .filter(b => b && /\d{13,19}/.test(b))
-    lines = blocks
+    // Garantit au moins 1 unité si le message contient un PAN
+    lines = blocks.length > 0 ? blocks : (text.trim() && /\d{13,19}/.test(text) ? [text.trim()] : [])
   } else {
     lines = text
       .split('\n')
@@ -65,19 +67,25 @@ bot.on('message:text', async (ctx) => {
     return
   }
 
-  setPending(session.collabId, session.productId, lines)
-  clearSession(telegramId)
+  // Ajoute à la pile en attente et renouvelle la session (envois multiples).
+  const total = appendPending(session.collabId, session.productId, lines)
+  touchSession(telegramId)
 
-  const preview = lines.slice(0, 5).map((l, i) => {
+  const all = getPending(session.collabId)?.cards ?? lines
+  const tail = all.slice(-5)
+  const startIdx = Math.max(0, total - tail.length)
+  const preview = tail.map((l, i) => {
     const pan = l.match(/\b(\d{13,19})\b/)?.[1] ?? '?'
     const masked = pan.length > 4 ? '●●●● ' + pan.slice(-4) : pan
-    return `${i + 1}. ${masked}`
+    return `${startIdx + i + 1}. ${masked}`
   }).join('\n')
-  const more = lines.length > 5 ? `\n…et ${lines.length - 5} autre${lines.length - 5 > 1 ? 's' : ''}` : ''
+  const hiddenCount = total - tail.length
+  const more = hiddenCount > 0 ? `\n…et ${hiddenCount} autre${hiddenCount > 1 ? 's' : ''} avant` : ''
 
+  const justAdded = lines.length
   const keyboard = new InlineKeyboard().webApp('📱 Confirmer dans la mini app', MINI_APP_URL + '/collab')
   await ctx.reply(
-    `✅ <b>${lines.length} carte${lines.length > 1 ? 's' : ''} détectée${lines.length > 1 ? 's' : ''}</b>\n\n${preview}${more}\n\n📱 Ouvre la mini app pour confirmer ou annuler l'ajout.`,
+    `✅ <b>+${justAdded} carte${justAdded > 1 ? 's' : ''}</b>  ·  Total : <b>${total}</b>\n\n${preview}${more}\n\n📨 Tu peux continuer d'envoyer d'autres cartes. Ouvre la mini app quand tu veux confirmer.`,
     { parse_mode: 'HTML', reply_markup: keyboard }
   )
 })
