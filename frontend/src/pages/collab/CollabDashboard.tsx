@@ -377,8 +377,6 @@ function ProductRow({
   const lc = LEVEL_COLORS[meta.level] ?? LEVEL_COLORS.CLASSIC
   const queryClient = useQueryClient()
 
-  const [showBulk, setShowBulk] = useState(false)
-
   const { data: inv } = useQuery<InventoryStats>({
     queryKey: ['collab-inventory', p.id],
     queryFn: () => api.get(`/api/collab/products/${p.id}/inventory`).then(r => r.data),
@@ -441,21 +439,13 @@ function ProductRow({
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', gap: 5, flexShrink: 0, flexDirection: 'column', alignItems: 'flex-end' }}>
-            <div style={{ display: 'flex', gap: 5 }}>
-              <button onClick={onEdit} style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: GOLD, borderRadius: 7, padding: '5px 9px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>MODIFIER</button>
-              <button onClick={onConfirmDelete} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: DANGER, borderRadius: 7, padding: '5px 9px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>SUPPR.</button>
-            </div>
-            <button
-              onClick={() => setShowBulk(v => !v)}
-              style={{ background: showBulk ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${showBulk ? 'rgba(251,191,36,0.25)' : 'rgba(255,255,255,0.08)'}`, color: showBulk ? GOLD : 'rgba(255,255,255,0.35)', borderRadius: 7, padding: '4px 9px', fontSize: 9, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}
-            >
-              BULK
-            </button>
+          <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+            <button onClick={onEdit} style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: GOLD, borderRadius: 7, padding: '5px 9px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>MODIFIER</button>
+            <button onClick={onConfirmDelete} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: DANGER, borderRadius: 7, padding: '5px 9px', fontSize: 10, ...BEBAS, letterSpacing: '0.06em', cursor: 'pointer' }}>SUPPR.</button>
           </div>
         )}
       </div>
-      {showBulk && <UploadPanel productId={p.id} onDone={handleBulkDone} />}
+      <UploadPanel productId={p.id} onDone={handleBulkDone} />
     </div>
   )
 }
@@ -599,14 +589,14 @@ export default function CollabDashboard() {
             <button
               onClick={() => navigate('/collab/add')}
               style={{
-                height: 28, paddingInline: 12, borderRadius: 8,
-                border: '1px solid rgba(251,191,36,0.35)',
-                background: 'rgba(251,191,36,0.08)',
-                color: GOLD, cursor: 'pointer',
-                fontSize: 10, ...BEBAS, letterSpacing: '0.08em',
+                height: 26, paddingInline: 10, borderRadius: 7,
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.04)',
+                color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                fontSize: 9, ...BEBAS, letterSpacing: '0.08em',
               }}
             >
-              + AJOUTER UNE CARTE
+              + NOUVEAU PRODUIT
             </button>
           </div>
 
