@@ -218,14 +218,24 @@ router.post('/:id/inventory/bulk', async (req: AuthRequest, res) => {
 // POST /:id/inventory/bot-session — démarre une session bot (le bot envoie un message au collab)
 router.post('/:id/inventory/bot-session', async (req: AuthRequest, res) => {
   const productId = parseInt(req.params.id)
-  const [product, user] = await Promise.all([
+  console.log(`[bot-session] userId=${req.userId} productId=${productId}`)
+
+  // Cherche le produit en ignorant collaboratorId si l'utilisateur est admin
+  const [productOwned, productAny, user] = await Promise.all([
     prisma.product.findFirst({ where: { id: productId, collaboratorId: req.userId! } }),
+    prisma.product.findFirst({ where: { id: productId } }),
     prisma.user.findUnique({ where: { id: req.userId! } }),
   ])
+
+  const product = productOwned ?? productAny
+  console.log(`[bot-session] product=${product?.id ?? 'null'} user.telegramId=${user?.telegramId ?? 'null'}`)
+
   if (!product) { res.status(404).json({ error: 'Produit introuvable' }); return }
   if (!user?.telegramId) { res.status(400).json({ error: 'Aucun Telegram lié à ce compte' }); return }
 
   setSession(user.telegramId, productId, req.userId!)
+
+  const botUsername = bot.botInfo?.username ? `@${bot.botInfo.username}` : 'le bot'
 
   try {
     await bot.api.sendMessage(
@@ -233,11 +243,13 @@ router.post('/:id/inventory/bot-session', async (req: AuthRequest, res) => {
       `🃏 <b>Mode réception activé</b>\n\nEnvoie tes cartes ici, une par ligne :\n<code>pan|expiry|cvv|titulaire|ddn|adresse|ville|email|tel|ip</code>\n\n⏱ Session valide 10 minutes.`,
       { parse_mode: 'HTML' }
     )
+    console.log(`[bot-session] message envoyé à telegramId=${user.telegramId}`)
   } catch (err: any) {
     clearSession(user.telegramId)
     const msg = err?.description ?? String(err)
+    console.error(`[bot-session] sendMessage échoué:`, msg)
     const hint = msg.includes('403') || msg.includes('Forbidden')
-      ? 'Tu dois d\'abord envoyer /start au bot Telegram avant de pouvoir recevoir des messages.'
+      ? `Tu dois d'abord envoyer /start à ${botUsername} dans Telegram avant de pouvoir recevoir des messages.`
       : `Impossible d'envoyer le message Telegram : ${msg}`
     res.status(400).json({ error: hint }); return
   }
