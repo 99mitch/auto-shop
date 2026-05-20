@@ -10,9 +10,6 @@ import AddedToCartSheet from '../components/AddedToCartSheet'
 import CartIcon from '../components/CartIcon'
 import { useTelegramBackButton } from '../hooks/useTelegramBackButton'
 
-import type { MockCard } from './Catalogue'
-import { MOCK_CARDS } from './Catalogue'
-
 type CardNetwork = 'VISA' | 'MASTERCARD' | 'AMEX' | 'OTHER'
 type CardType = 'DEBIT' | 'CREDIT'
 type CardDevice = 'IPHONE' | 'ANDROID' | 'UNKNOWN'
@@ -89,41 +86,15 @@ export default function ProductDetail() {
 
   useTelegramBackButton(() => navigate(-1))
 
-  // Check if this is a mock card (id 1-12)
-  const numId = Number(id)
-  const mockCard = MOCK_CARDS.find((c) => c.id === numId)
-
-  const { data: apiProduct, isLoading } = useQuery<Product>({
+  const { data: product, isLoading } = useQuery<Product>({
     queryKey: ['product', id],
     queryFn: () => api.get(`/api/products/${id}`).then((r) => r.data),
     staleTime: 5 * 60 * 1000,
-    enabled: !mockCard,
   })
 
-  const product = mockCard ?? apiProduct
-
-  // Parse metadata from actual product description (primary) or fall back to mock
   const cardMeta = product ? parseCardMeta(product.description) : null
-
-  const displayMeta: CardMeta | null = cardMeta?.bin
-    ? cardMeta
-    : mockCard
-      ? {
-          bin: mockCard.bin,
-          bank: mockCard.banque,
-          network: mockCard.network,
-          level: mockCard.niveau as CardMeta['level'],
-          type: mockCard.cardType,
-          device: mockCard.device,
-          source: mockCard.source,
-          recoveryDate: mockCard.recoveryDate,
-          ddn: mockCard.ddn,
-          cp: mockCard.cp,
-          age: String(mockCard.age),
-        }
-      : null
-
-  const displayBin = displayMeta?.bin || mockCard?.bin || ''
+  const displayMeta: CardMeta | null = cardMeta?.bin ? cardMeta : null
+  const displayBin = displayMeta?.bin ?? ''
 
   const handleAddToCart = useCallback(() => {
     if (!product) return
@@ -377,8 +348,8 @@ export default function ProductDetail() {
           productId={product.id}
           productName={product.name}
           productPrice={product.price}
-          bin={displayBin || mockCard?.bin}
-          niveau={displayMeta?.level ?? mockCard?.niveau}
+          bin={displayBin || undefined}
+          niveau={displayMeta?.level}
           onClose={() => setShowSheet(false)}
         />
       )}
